@@ -1,0 +1,43 @@
+# vibecheck. — Male concept v1
+
+Created using the built-in imagegen tool. Static raster mockups; scores are illustrative.
+
+Changes: consistent male subject, men's wardrobe and model; crisp layered blue plates replacing cloud-like UI blobs; typeset encouragement replacing handwriting. Original brand identity, layouts, score tickets, feature callouts and rotation cue retained.
+
+## Exact prompt: Story and expression
+
+Use case: style-transfer. Edit the provided vibecheck three-screen design board into a male version. Preserve the exact three-phone presentation, screen hierarchy, generous spacing, white/ice background, original blue overlapping-bean brand logo and navy lowercase vibecheck. wordmark. Output landscape 3:2 high fidelity crisp mobile UI.
+User requested two specific changes beyond male imagery: eliminate fluffy cloud-shaped blobs and eliminate ALL handwritten encouragement. Execute both clearly.
+SUBJECT: replace every woman photo, avatar and thumbnail with the SAME stylish adult South Asian man around 27, medium warm brown skin, short textured dark hair, neat light stubble, relaxed confident expression. Cream open-collar linen shirt, olive straight trousers where visible, natural approachable editorial photography. Story photo is a golden-hour outdoor portrait of this man. Maintain consistent identity in comparison and tiny thumbnails. Outfit shortcut thumbnail should show men's garments.
+SHAPE LANGUAGE: Replace all cloud-like multi-lobed UI blobs with firm, clean asymmetrical rounded tabs / sculptural overlapping blue plates. Two clearly defined offset layers with crisp contours, deeper cobalt edge and restrained gradient shading, not puffy, no scallops, no foam, no haze or balloon appearance. Keep interesting offset overlap and slight organic movement implied in the silhouette; do not reduce all elements to flat generic rectangles. The score should sit on a compact angular-rounded blue plate with a second slightly offset navy/cobalt layer, overlapping the photo and ticket. Keep original small brand logo EXACTLY recognizable with its original blue bean curves; this is a UI shape refinement, not a logo redesign. Large left-rail background ornament should become flatter layered blue ribbon/plate composition with clear contour edges instead of a cloud.
+TYPOGRAPHY: every encouraging comment and every note in and outside phones must use confident clean sans-serif, medium or bold weight, upright, never handwriting, script, cursive, italics, doodles or hearts. Main headings retain modern bold navy typography. Use a small uppercase typeset sticker on home photo reading "LOOKING SHARP." The result photo note reads "OWN THE MOMENT." Left rail lower text reads "GOOD TASTE. ALL YOU." in crisp small uppercase sans.
+SCREEN 1 preserve "Good taste. All you.", brand tagline, Story / loox / ChicFit tabs, portrait cutout in FRONT of enormous YOUR VIBE background letters, photo-overlapping encouragement label, Check my story CTA, Compare two photos, loox and ChicFit shortcuts, Home / Saved / Me bottom nav.
+SCREEN 2 preserve Story Check, Story/Post control, portrait, huge 92/100 on overlapping sculptural plate, POST IT. verdict, ticket with semicircular side notches and perforation, "Warm light. Effortlessly you.", "Try a closer crop.", Mood 94 / Framing 86 / Clarity 91, two supporting tips in neat blue/neutral tags, Try this crop button and Compare photos / Finishing touches controls. Do not obscure face.
+SCREEN 3 preserve Same you. Clearer choice., Original and Closer crop portraits, recommendation "This one's your vibe.", style match 89% with small recent-post refs, paired Warmth and Framing mini bars, Use this photo and Try another pair controls, bottom nav.
+No change to feature scope. Modern editorial, assured and approachable. Retain light blue brand identity, no stereotypical black/red macho redesign. Short text must be readable. Illustrative scores only. Do not add claims or extra screens.
+
+## Exact prompt: loox and ChicFit
+
+Use case: style-transfer. Edit reference image 1 (female loox / wardrobe / ChicFit three-screen board) into the matching MALE VERSION. Reference image 2 (newly generated male story board) is authoritative for male identity, typography, clean blue layered shapes and visual direction. Preserve reference 1's three complete phones, left title rail, screen structure, UI functions and generous spacing. Landscape 3:2, crisp high fidelity.
+Use SAME adult South Asian man shown in reference 2 across portrait, hairstyle thumbnails, profile model and full-body 3D avatar: medium warm brown skin, dark textured short hair, light stubble, approx 27. Face and grooming identity consistent. For loox use a natural front-facing portrait, head upright, shoulders visible, no hand resting on cheek. Apparel: cream open-collar linen shirt, olive straight trousers, understated brown loafers. Modern relaxed style.
+CRITICAL USER FEEDBACK: NO fluffy/cloud-like multi-lobed UI blobs, NO handwritten encouragement ANYWHERE. Replace clouds with firm asymmetrical rounded polygons/plates with crisp contours, two offset cobalt and ice-blue layers, restrained gradients, clear visible overlap. Sculptural but not puffy. Reuse the male board's score plate silhouette. Keep original small blue bean brand logo and navy vibecheck. wordmark unchanged. Large background ornament on left matches male board's layered broad blue ribbon/plate forms. All encouragement, rotation cues, headings and notes in upright sans-serif, no script, handwriting, hearts or doodles. Same white/ice-blue canvas, navy type and cobalt actions as references; no black/red macho rebrand.
+LEFT RAIL: logo, "Your look. Your way.", "02 / Style & self-expression", small clean uppercase "LOOK GOOD. FEEL RIGHT. BE YOU.", layered ribbon ornament. Bottom device labels unchanged: 04 — loox / 05 — Your wardrobe / 06 — ChicFit.
+PHONE 1 loox:
+Back arrow, loox title and menu. "Your look. Your energy." / "Small details. Still you."
+Large male portrait with four neatly typeset compact blue/white rounded rectangular callouts at photo margins, thin pointer lines ending at the correct visual features, face unobstructed. Callouts: "Natural volume" to hair crown, "Clean sides" to temple hair, "Light stubble" to beard at jaw, "Textured finish" to top hair. Short typeset encouragement sticker in spare photo corner: "LOOKING SHARP."
+Below photo an overlapping pair of crisp sculptural blue plates contains "Style match" / huge "93%" / "A textured crop works well." Keep this score about hairstyle styling compatibility.
+"Try a hairstyle", "Compare looks" link, three clearly DIFFERENT realistic same-man hair thumbnails: "Original" with loosely waved top, "Textured crop" selected with cobalt border and check showing shorter tousled cropped hair, "Side part" showing neat side part. Face identity unchanged between hairstyles. Button "Save this look". Bottom Home / Saved / Me nav.
+PHONE 2 WARDROBE:
+ChicFit + brand icon, plus action. "Your wardrobe. More possibilities." / "Build looks from what you own."
+Category pills All / Tops / Bottoms / Layers / Shoes.
+Two-column three-row garment grid with men's items isolated cleanly on pale ice background. Labels: "Linen shirt", "Navy overshirt", "Olive trousers", "Brown loafers", "Everyday watch", and dashed "+ Add clothes" tile. Images must match labels.
+Lower model setup card showing miniature same male model, "Your 3D model", "Add face & body scan to try on your looks." Compact firm layered tab over corner reading "START WITH WHAT YOU OWN." in sans-serif.
+Buttons Add from photo / Build an outfit. Bottom nav.
+PHONE 3 CHICFIT:
+ChicFit heading, wardrobe icon. "Same pieces. New energy." Occasion Casual dinner / Relaxed.
+Full-body rendered 3D personalized male avatar of same man, wearing cream linen shirt with rolled sleeves, olive straight trousers, brown loafers and understated watch. Natural proportions, complete head-to-toe figure on subtle circular platform. Three right-rail front/side/back view thumbnails and 360° icon, clear clean rotation arrows. EXACT instruction "Drag to rotate" in readable upright medium sans-serif, no handwritten font.
+Helper "Tap a piece to swap". Five-item garment thumbnail strip reflecting owned shirt, overshirt, trousers, loafers, watch.
+Compact notched perforated score ticket with huge 88/100 on small layered sculptural blue plate, verdict "WEAR IT.", comment "Easy layers. Strong colour story."
+Save outfit CTA, Try another secondary, Home / Saved / Me nav.
+Keep UI calm, assured, friendly. Preserve all functional details and original brand identity. No extra screens or decorative fluff. Illustrative scores. All text should be readable.
+

@@ -1,0 +1,224 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: VibeCheck private AWS backend and static frontend
+
+Parameters:
+  BedrockModel:
+    Type: String
+    Default: us.amazon.nova-lite-v1:0
+  BedrockImageModel:
+    Type: String
+    Default: amazon.nova-canvas-v1:0
+  MonthlyBudgetUsd:
+    Type: Number
+    Default: 10
+    MinValue: 1
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures: [x86_64]
+    Timeout: 300
+    MemorySize: 2048
+    Tracing: Active
+
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ${AWS::StackName}-users
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      Policies:
+        PasswordPolicy: {MinimumLength: 10, RequireLowercase: true, RequireUppercase: true, RequireNumbers: true, RequireSymbols: false}
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      PreventUserExistenceErrors: ENABLED
+      ExplicitAuthFlows: [ALLOW_USER_PASSWORD_AUTH, ALLOW_USER_SRP_AUTH, ALLOW_REFRESH_TOKEN_AUTH]
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+      TokenValidityUnits: {AccessToken: hours, IdToken: hours, RefreshToken: days}
+
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption: {ServerSideEncryptionConfiguration: [{ServerSideEncryptionByDefault: {SSEAlgorithm: AES256}}]}
+      PublicAccessBlockConfiguration: {BlockPublicAcls: true, IgnorePublicAcls: true, BlockPublicPolicy: true, RestrictPublicBuckets: true}
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['content-type']
+            AllowedMethods: [GET, HEAD, PUT]
+            AllowedOrigins: ['*']
+            MaxAge: 300
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireJobResults
+            Status: Enabled
+            TagFilters: [{Key: purpose, Value: job-result}]
+            ExpirationInDays: 7
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption: {ServerSideEncryptionConfiguration: [{ServerSideEncryptionByDefault: {SSEAlgorithm: AES256}}]}
+      PublicAccessBlockConfiguration: {BlockPublicAcls: true, IgnorePublicAcls: true, BlockPublicPolicy: true, RestrictPublicBuckets: true}
+
+  StateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: pk, AttributeType: S}, {AttributeName: sk, AttributeType: S}]
+      KeySchema: [{AttributeName: pk, KeyType: HASH}, {AttributeName: sk, KeyType: RANGE}]
+      TimeToLiveSpecification: {AttributeName: ttl, Enabled: true}
+      StreamSpecification: {StreamViewType: NEW_IMAGE}
+      SSESpecification: {SSEEnabled: true}
+      PointInTimeRecoverySpecification: {PointInTimeRecoveryEnabled: true}
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: $default
+      CorsConfiguration:
+        AllowHeaders: [authorization, content-type]
+        AllowMethods: [GET, POST, OPTIONS]
+        AllowOrigins: ['*']
+        MaxAge: 300
+      DefaultRouteSettings: {ThrottlingBurstLimit: 20, ThrottlingRateLimit: 10}
+      Auth:
+        Authorizers:
+          CognitoJwt:
+            IdentitySource: $request.header.Authorization
+            JwtConfiguration:
+              audience: [!Ref UserPoolClient]
+              issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../build/lambda/
+      Handler: lambda.handler
+      Environment:
+        Variables:
+          DATA_BUCKET: !Ref DataBucket
+          TABLE_NAME: !Ref StateTable
+          USER_POOL_ID: !Ref UserPool
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+          BEDROCK_MODEL: !Ref BedrockModel
+          BEDROCK_IMAGE_MODEL: !Ref BedrockImageModel
+      Policies:
+        - S3CrudPolicy: {BucketName: !Ref DataBucket}
+        - DynamoDBCrudPolicy: {TableName: !Ref StateTable}
+        - Statement:
+            - Effect: Allow
+              Action: [bedrock:InvokeModel]
+              Resource:
+                - !Sub arn:${AWS::Partition}:bedrock:us-east-1::foundation-model/amazon.nova-*
+                - !Sub arn:${AWS::Partition}:bedrock:us-east-2::foundation-model/amazon.nova-*
+                - !Sub arn:${AWS::Partition}:bedrock:us-west-2::foundation-model/amazon.nova-*
+                - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
+            - Effect: Allow
+              Action: [rekognition:DetectFaces]
+              Resource: '*'
+      Events:
+        Health: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/health, Method: GET}}
+        Config: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/config, Method: GET}}
+        Analyze: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/analyze, Method: POST, Auth: {Authorizer: CognitoJwt}}}
+        Compare: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/compare, Method: POST, Auth: {Authorizer: CognitoJwt}}}
+        Avatar: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/avatar, Method: POST, Auth: {Authorizer: CognitoJwt}}}
+        Preview: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/generate-preview, Method: POST, Auth: {Authorizer: CognitoJwt}}}
+        CloudState: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/cloud/state, Method: GET, Auth: {Authorizer: CognitoJwt}}}
+        CloudUpload: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/cloud/upload, Method: POST, Auth: {Authorizer: CognitoJwt}}}
+        CloudCommit: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/cloud/commit, Method: POST, Auth: {Authorizer: CognitoJwt}}}
+        CloudDownload: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/cloud/download, Method: POST, Auth: {Authorizer: CognitoJwt}}}
+        JobsCreate: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/jobs, Method: POST, Auth: {Authorizer: CognitoJwt}}}
+        JobsRead: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: '/api/jobs/{id}', Method: GET, Auth: {Authorizer: CognitoJwt}}}
+        JobStream:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt StateTable.StreamArn
+            StartingPosition: LATEST
+            BatchSize: 1
+            MaximumRetryAttempts: 1
+            BisectBatchOnFunctionError: true
+            FilterCriteria:
+              Filters:
+                - Pattern: '{"eventName":["INSERT"],"dynamodb":{"NewImage":{"entity":{"S":["job"]}}}}'
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties: {LogGroupName: !Sub '/aws/lambda/${ApiFunction}', RetentionInDays: 14}
+
+  FrontendOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig: {Name: !Sub '${AWS::StackName}-frontend-oac', OriginAccessControlOriginType: s3, SigningBehavior: always, SigningProtocol: sigv4}
+  SpaRewriteFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub '${AWS::StackName}-spa-rewrite'
+      AutoPublish: true
+      FunctionConfig: {Comment: Rewrite client routes to index.html, Runtime: cloudfront-js-2.0}
+      FunctionCode: >-
+        function handler(event) { var request = event.request; var leaf = request.uri.split('/').pop(); if (request.uri.endsWith('/') || leaf.indexOf('.') === -1) request.uri = '/index.html'; return request; }
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        HttpVersion: http2and3
+        DefaultRootObject: index.html
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: frontend
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            OriginAccessControlId: !Ref FrontendOriginAccessControl
+            S3OriginConfig: {OriginAccessIdentity: ''}
+          - Id: api
+            DomainName: !Select [2, !Split ['/', !GetAtt HttpApi.ApiEndpoint]]
+            CustomOriginConfig: {OriginProtocolPolicy: https-only, OriginSSLProtocols: [TLSv1.2]}
+        DefaultCacheBehavior:
+          TargetOriginId: frontend
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD, OPTIONS]
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          FunctionAssociations:
+            - {EventType: viewer-request, FunctionARN: !GetAtt SpaRewriteFunction.FunctionARN}
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: api
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD, OPTIONS]
+            Compress: true
+            CachePolicyId: 413f8f86-2d8c-426d-a7c8-9ce6408b8340
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: {Service: cloudfront.amazonaws.com}
+            Action: s3:GetObject
+            Resource: !Sub ${FrontendBucket.Arn}/*
+            Condition: {StringEquals: {'AWS:SourceArn': !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}'}}
+  MonthlyCostBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: !Sub '${AWS::StackName}-monthly-cost'
+        BudgetLimit: {Amount: !Ref MonthlyBudgetUsd, Unit: USD}
+        BudgetType: COST
+        TimeUnit: MONTHLY
+
+Outputs:
+  DistributionUrl: {Value: !Sub 'https://${Distribution.DomainName}'}
+  ApiUrl: {Value: !GetAtt HttpApi.ApiEndpoint}
+  UserPoolId: {Value: !Ref UserPool}
+  UserPoolClientId: {Value: !Ref UserPoolClient}
+  FrontendBucketName: {Value: !Ref FrontendBucket}

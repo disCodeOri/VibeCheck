@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+.aws-sam/
+samconfig.toml
+.env*
+!.env.example
+data/
+test-results/
+playwright-report/
+*.log
+.qa/
