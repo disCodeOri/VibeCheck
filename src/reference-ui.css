@@ -18,7 +18,7 @@
   --fs-score: 114px;
   background: radial-gradient(ellipse at 70% 5%, #fff 0, #f4fbff 75%);
 }
-.app-sidebar { background: #f4fbff; padding: 24px 16px 20px; }
+.app-sidebar { background: #f4fbff; padding: 24px 16px 20px; overflow-x: hidden; }
 .sidebar-brand { margin-bottom: 30px; padding-left: 14px; }
 .sidebar-brand img { width: 207px; height: 66px; object-fit: contain; }
 .sidebar-section-label { font-size: 13px; font-weight: 500; letter-spacing: .4px; margin: 0 0 10px 12px; }
@@ -53,7 +53,7 @@
 .btn:not(.secondary) { background: linear-gradient(115deg,#0861ff,#2274ff); }
 .btn.secondary { color: var(--ink); border-color: #b8cdec; background: rgba(255,255,255,.7); }
 .home-workspace { gap: 12px; }
-.home-workspace > .view-header { margin-bottom: 4px; }
+.home-workspace > .view-header { margin-bottom: 0; }
 .home-workspace .view-header h1 { font-size: clamp(42px,5.1vw,78px); font-weight: 800; }
 .home-hero-grid { gap: 12px; grid-template-columns: minmax(0,1.61fr) minmax(0,1fr); }
 .hero-visual-card { aspect-ratio: 750 / 534; }
@@ -72,6 +72,8 @@
 .home-shortcuts-grid { gap: 10px; }
 .shortcut-card { grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); padding: 10px; gap: 20px; min-height: 216px; border: 0; }
 .shortcut-info p { font-size: 19px; }
+.wardrobe-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; align-items: center; background: #edf4f9; }
+.wardrobe-pair .garment-image { height: 100%; }
 .shortcut-arrow { width: 48px; height: 48px; right: 18px; bottom: 18px; }
 .story-workbench { grid-template-columns: minmax(0,1.13fr) minmax(0,1fr); gap: 14px; }
 .story-photo-frame img { aspect-ratio: 646 / 654; }
@@ -91,6 +93,8 @@
 .style-match-score { font-size: 72px; }
 .story-workbench:has(.compare-panes-grid) { grid-template-columns: minmax(0,1.96fr) minmax(0,1fr); }
 .compare-panes-grid { gap: 12px; }
+.compare-live-metric { display: grid; gap: 8px; font-size: 15px; }
+.compare-live-row { display: grid; grid-template-columns: 14px 1fr 28px; align-items: center; gap: 10px; }
 .pane-badge-top { left: 12px; right: 12px; top: 12px; }
 .pane-label-pill { border-radius: 12px; font-size: 15px; }
 .recommended-pill { font-size: 11px; padding: 7px; }
@@ -112,6 +116,14 @@
 .garment-card h4 { font-size: 19px; }
 .garments-grid { gap: 14px; }
 .outfit-layout { gap: 12px; }
+.outfit-layout .model-preview-card { position: relative; top: auto; padding: 0; border: 0; overflow: hidden; }
+.outfit-layout .model-stage-box { min-height: 650px !important; }
+.outfit-layout .avatar-stage { border: 0; border-radius: 16px; min-height: 580px; box-shadow: none; }
+.outfit-layout .avatar-view-controls { padding: 0 12px 12px; }
+.outfit-layout .encouragement-soft, .outfit-layout .encouragement-sharp { bottom: 112px; max-width: 240px; font-size: 26px; }
+.model-stage-box .avatar-stage { height: 520px; }
+.model-stage-box .avatar-stage > div:not(.avatar-drag-cue):not(.avatar-model-error) { height: 100% !important; }
+.outfit-layout .model-stage-box .avatar-stage { height: 580px; }
 .outfit-layout > div:nth-child(2) > div { padding: 24px !important; border: 0 !important; }
 .outfit-layout > div:nth-child(2) h2 { font-size: 38px !important; letter-spacing: -.045em; }
 .outfit-chips-row { gap: 10px; }
@@ -126,6 +138,12 @@
 .score-ticket.compact .verdict-desc, .score-ticket.compact .tweak-card { display: none; }
 .score-ticket.compact .metric-row { font-size: 13px; grid-template-columns: 130px 1fr 24px; gap: 8px; }
 .score-ticket.compact .ticket-metrics { gap: 8px; }
+.app-content .home-shortcuts-grid .shortcut-thumbnail img { max-height: 196px; }
+@media (min-width: 1200px) {
+  .home-workspace .view-header p { margin-top: 0; }
+  .home-workspace .view-header { margin-top: -4px; }
+  .outfit-layout > div:nth-child(2) > div { padding: 18px 24px !important; }
+}
 @media (prefers-reduced-motion: no-preference) {
   .app-content > div { animation: view-enter .35s ease both; }
   .sidebar-decor { animation: decoration-breathe 9s ease-in-out infinite alternate; transform-origin: left bottom; }
@@ -180,6 +198,10 @@
   .pane-label-pill { font-size: 11px; padding: 6px; }
   .recommended-pill { font-size: 9px; }
   .compare-pane-card img { aspect-ratio: 3 / 4; }
+  .compare-panes-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .model-stage-box .avatar-stage { height: 430px; min-height: 430px; }
+  .outfit-layout .model-stage-box { min-height: 480px !important; }
+  .outfit-layout .model-stage-box .avatar-stage { height: 430px; min-height: 430px; }
   .loox-workbench > div:nth-child(2) > div:first-child { padding: 14px !important; }
   .hair-options-grid { gap: 8px; }
   .hair-card h4 { font-size: 12px; }

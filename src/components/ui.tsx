@@ -113,9 +113,9 @@ export function PhotoPicker({
           </div>
           <div className="dropzone-label">Drop a photo here</div>
           <div className="dropzone-sub">JPG or PNG · up to 12 MB</div>
-          <button type="button" className="dropzone-btn" disabled={busy}>
+          <span className="dropzone-btn">
             {busy ? 'Opening…' : 'Choose photo'}
-          </button>
+          </span>
         </div>
       ) : (
         <button
@@ -165,7 +165,7 @@ export function ScoreTicket({
           <h2>{analysis.verdict}</h2>
           <div className="verdict-title">{analysis.summary}</div>
           <div className="verdict-desc">
-            {isExample ? 'Your lighting and expression work well together.' : 'Analysis processed for this look.'}
+            {isExample ? 'Sample result · try your own photo' : 'Analysis processed for this look.'}
           </div>
         </div>
       </div>

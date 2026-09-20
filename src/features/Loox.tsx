@@ -18,10 +18,10 @@ export default function Loox() {
   const prefillImage = (location.state as {prefillImage?: string})?.prefillImage;
 
   const defaultPortrait =
-    style === 'sharp' ? '/assets/male-portrait.png' : '/assets/female-portrait.png';
+    style === 'sharp' ? '/assets/portrait-v2.png' : '/assets/female-portrait.png';
 
   const [photo, setPhoto] = useState(saved?.image || prefillImage || defaultPortrait);
-  const [result, setResult] = useState<Analysis | null>(saved?.analysis || exampleLoox);
+  const [result, setResult] = useState<Analysis | null>(saved?.analysis || (prefillImage ? null : exampleLoox));
   const [selectedStyleIndex, setSelectedStyleIndex] = useState(1); // Default to 'Soft layers'
   const [showHighlights, setShowHighlights] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -141,7 +141,7 @@ export default function Loox() {
                     {label: 'Soft texture', detail: 'Gentle wave complements natural curl.', x: 65, y: 48}
                   ]
                 }
-                show={showHighlights}
+                show={showHighlights && !!result}
               />
 
               <EncouragementBadge
@@ -221,10 +221,10 @@ export default function Loox() {
 
               {/* Style Match Banner */}
               <div className="style-match-banner">
-                <div className="banner-val">93%</div>
+                <div className="banner-val">{result ? `${result.score}%` : '—'}</div>
                 <div className="banner-text">
                   <strong>Style match</strong>
-                  <span>{hairstyles[selectedStyleIndex]?.name || 'Soft layers'} suit your look.</span>
+                  <span>{result ? (result.source === 'example' ? 'Sample styling inspiration' : result.summary) : 'Check this portrait to see your recommendations.'}</span>
                 </div>
               </div>
 
@@ -256,8 +256,8 @@ export default function Loox() {
 
               {/* Actions */}
               <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                <Button className="block" onClick={saveLook}>
-                  Save this look →
+                <Button className="block" onClick={result ? saveLook : () => void runAnalysis()}>
+                  {result ? 'Save this look →' : 'Check this portrait →'}
                 </Button>
 
                 <div style={{display: 'flex', gap: '10px'}}>

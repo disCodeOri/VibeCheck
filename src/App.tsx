@@ -27,7 +27,7 @@ class Boundary extends Component<{children: ReactNode}, {error: boolean}> {
 }
 
 export default function App() {
-  const {state, update, ready} = useStore();
+  const {state, update, ready, notify} = useStore();
   const loc = useLocation();
 
   useEffect(() => {
@@ -148,7 +148,7 @@ export default function App() {
           <div className="topbar-right">
             {/* Soft/Sharp is an appearance setting and lives in Settings, as in
                 the v1 targets; it is deliberately not duplicated here. */}
-            <button type="button" className="topbar-icon-btn" aria-label="Notifications">
+            <button type="button" className="topbar-icon-btn" aria-label="Notifications" onClick={() => notify('You’re all caught up. Your saved looks are ready when you are.')}>
               <Bell size={18} />
             </button>
 

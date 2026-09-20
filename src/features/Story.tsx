@@ -19,7 +19,7 @@ export default function Story() {
   const prefillImage = (location.state as {prefillImage?: string})?.prefillImage;
 
   const defaultPhoto =
-    style === 'sharp' ? '/assets/male-portrait.png' : '/assets/female-portrait.png';
+    style === 'sharp' ? '/assets/portrait-v2.png' : '/assets/female-portrait.png';
 
   const [compare, setCompare] = useState(query.has('compare'));
   const [image, setImage] = useState(saved?.image || prefillImage || defaultPhoto);
@@ -27,7 +27,7 @@ export default function Story() {
   const [refs, setRefs] = useState<string[]>([]);
   const [format, setFormat] = useState<'Story' | 'Post'>('Story');
   const [mood, setMood] = useState(state.profile.mood || 'Effortless');
-  const [result, setResult] = useState<Analysis | null>(saved?.analysis || exampleAnalysis);
+  const [result, setResult] = useState<Analysis | null>(saved?.analysis || (prefillImage ? null : exampleAnalysis));
   const [comparison, setComparison] = useState<CompareResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -38,7 +38,7 @@ export default function Story() {
   useEffect(() => {
     if (query.has('compare')) {
       setCompare(true);
-      if (!imageB) {
+      if (!imageB && image === defaultPhoto) {
         // Sample crop for photo B comparison
         void cropImage(image, 1.15, 45, 4 / 5)
           .then(cropped => {
@@ -285,10 +285,10 @@ export default function Story() {
               }}
             >
               <h2 style={{fontSize: '32px', fontWeight: 800, letterSpacing: '-0.8px', color: 'var(--ink)'}}>
-                This one’s your vibe.
+                {comparison ? (comparison.winner === 'tie' ? 'Two good choices.' : 'This one’s your vibe.') : 'Find your stronger shot.'}
               </h2>
               <p style={{fontSize: '15px', color: 'var(--muted)', marginTop: '4px', marginBottom: '20px'}}>
-                Warmer light. More focus on you.
+                {comparison?.summary || 'Add both photos, then compare their light and framing.'}
               </p>
 
               {/* Style match metric */}
@@ -306,16 +306,29 @@ export default function Story() {
                 <div>
                   <div style={{fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)'}}>Style match</div>
                   <div style={{fontFamily: 'var(--font-barlow)', fontSize: '52px', fontWeight: 800, lineHeight: 0.9, color: 'var(--ink)'}}>
-                    89%
+                    {comparison?.styleMatch != null ? `${comparison.styleMatch}%` : '—'}
                   </div>
                 </div>
                 <div style={{fontSize: '13px', color: 'var(--muted)', borderLeft: '1px solid var(--line)', paddingLeft: '16px'}}>
-                  Matches your recent posts
+                  {comparison?.source === 'example' ? 'Sample comparison' : 'Your photo comparison'}
                 </div>
               </div>
 
               {/* Metric comparative rows */}
               <div style={{display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px'}}>
+                {comparison && comparison.a.metrics.slice(0, 3).map((metric, i) => (
+                  <div className="compare-live-metric" key={metric.label}>
+                    <strong>{metric.label}</strong>
+                    {[comparison.a, comparison.b].map((item, side) => (
+                      <div className="compare-live-row" key={side}>
+                        <small>{side ? 'B' : 'A'}</small>
+                        <div className="metric-bar-track"><div className="metric-bar-fill" style={{width: `${item.metrics[i]?.score || 0}%`, opacity: side ? 1 : .45}} /></div>
+                        <small>{item.metrics[i]?.score ?? '—'}</small>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                <div hidden>
                 <div style={{display: 'grid', gridTemplateColumns: '70px 1fr 30px', alignItems: 'center', gap: '10px', fontSize: '13px'}}>
                   <span style={{fontWeight: 700}}>Warmth</span>
                   <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
@@ -355,6 +368,7 @@ export default function Story() {
                     </div>
                   </div>
                 </div>
+                </div>
               </div>
 
               {/* Tweak Tip */}
@@ -371,11 +385,11 @@ export default function Story() {
                 <Button
                   className="block"
                   onClick={() => {
-                    saveCheck(imageB || image, comparison?.b || result);
-                    notify('Photo choice confirmed and saved.');
+                    if (!comparison) { void runAnalysis(); return; }
+                    saveCheck(comparison.winner === 'a' ? image : imageB, comparison.winner === 'a' ? comparison.a : comparison.b);
                   }}
                 >
-                  Use photo B →
+                  {comparison ? `Use photo ${comparison.winner === 'a' ? 'A' : 'B'} →` : 'Compare these photos →'}
                 </Button>
 
                 <Button
@@ -491,7 +505,7 @@ export default function Story() {
                   <Button
                     secondary
                     style={{flex: 1}}
-                    onClick={() => setCompare(true)}
+                    onClick={() => nav('/story?compare=1')}
                   >
                     <Images size={16} /> Compare photos
                   </Button>

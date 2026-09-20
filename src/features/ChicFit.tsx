@@ -68,6 +68,7 @@ export default function ChicFit({defaultTab}: {defaultTab?: 'Wardrobe' | 'Outfit
 
   // Toggle garment selection in outfit
   const toggleGarment = (g: Garment) => {
+    setResult(null);
     setSelectedGarmentIds(prev =>
       prev.includes(g.id) ? prev.filter(id => id !== g.id) : [...prev, g.id]
     );
@@ -85,14 +86,11 @@ export default function ChicFit({defaultTab}: {defaultTab?: 'Wardrobe' | 'Outfit
       capturedImg = capture.current?.() || capturedImg;
     } catch {}
     const analysisToSave: Analysis = result || {
-      score: 88,
-      verdict: 'WEAR IT.',
-      summary: `${selectedOccasion} combination.`,
-      metrics: [
-        {label: 'Colour harmony', score: 90, detail: 'Balanced tones'},
-        {label: 'Occasion match', score: 86, detail: selectedOccasion}
-      ],
-      tips: ['Clean, harmonious pairing.'],
+      score: 0,
+      verdict: 'SAVED LOOK.',
+      summary: `${selectedOccasion} combination · not yet rated.`,
+      metrics: [],
+      tips: [],
       source: 'manual'
     };
 
@@ -384,7 +382,7 @@ export default function ChicFit({defaultTab}: {defaultTab?: 'Wardrobe' | 'Outfit
                   <Utensils size={18} style={{color: 'var(--action)'}} />
                   <select
                     value={selectedOccasion}
-                    onChange={e => setSelectedOccasion(e.target.value)}
+                    onChange={e => { setSelectedOccasion(e.target.value); setResult(null); }}
                     style={{width: '100%', fontWeight: 700, fontSize: '14px', background: 'transparent'}}
                   >
                     {['Casual dinner', 'Everyday', 'Work', 'Date night', 'Weekend'].map(o => (
@@ -413,7 +411,7 @@ export default function ChicFit({defaultTab}: {defaultTab?: 'Wardrobe' | 'Outfit
                         color: selectedStyleTag === s ? '#FFFFFF' : 'var(--muted)',
                         borderColor: selectedStyleTag === s ? 'var(--action)' : 'var(--line)'
                       }}
-                      onClick={() => setSelectedStyleTag(s)}
+                      onClick={() => { setSelectedStyleTag(s); setResult(null); }}
                     >
                       {s}
                     </button>
@@ -490,7 +488,12 @@ export default function ChicFit({defaultTab}: {defaultTab?: 'Wardrobe' | 'Outfit
                 <Button
                   secondary
                   onClick={() => {
-                    notify('Remixed outfit combination.');
+                    const nextStyle = selectedStyleTag === 'Relaxed' ? 'Minimal' : selectedStyleTag === 'Minimal' ? 'Classic' : 'Relaxed';
+                    setSelectedStyleTag(nextStyle);
+                    const next = state.garments.filter(g => nextStyle !== 'Minimal' || (g.category !== 'layers' && g.category !== 'accessories'));
+                    setSelectedGarmentIds(next.map(g => g.id));
+                    setResult(null);
+                    notify(`${nextStyle} combination selected.`);
                   }}
                 >
                   Try another

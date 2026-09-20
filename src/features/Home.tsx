@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import {ArrowRight, Images} from 'lucide-react';
-import {Button, PhotoPicker} from '../components/ui';
+import {Button, PhotoPicker, GarmentImage} from '../components/ui';
 import {useStore} from '../lib/context';
 import {garmentSheet} from '../lib/storage';
 
@@ -38,7 +38,7 @@ export default function Home() {
 
   const looxThumb =
     style === 'sharp'
-      ? '/assets/male-portrait.png'
+      ? '/assets/portrait-v2.png'
       : '/assets/female-portrait.png';
 
   const chicfitThumb =
@@ -140,12 +140,9 @@ export default function Home() {
 
         {/* 3. Wardrobe */}
         <Link to="/wardrobe" className="shortcut-card">
-          <div className="shortcut-thumbnail">
-            <img
-              src={wardrobeThumb}
-              alt="Wardrobe flatlay"
-              style={{objectFit: 'cover', objectPosition: 'center 20%'}}
-            />
+          <div className="shortcut-thumbnail wardrobe-pair">
+            <GarmentImage garment={{name: 'Top from your example wardrobe', image: `${wardrobeThumb}#0`}} />
+            <GarmentImage garment={{name: 'Trousers from your example wardrobe', image: `${wardrobeThumb}#2`}} />
           </div>
           <div className="shortcut-info">
             <h3>Wardrobe</h3>
