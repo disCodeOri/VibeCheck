@@ -9,7 +9,7 @@
     "dev:web": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build && node scripts/build-offline.mjs",
     "start": "node --import tsx scripts/start.mjs",
-    "test": "vitest run",
+    "test": "vitest run tests",
     "build:lambda": "node scripts/build-lambda.mjs"
   },
   "dependencies": {
@@ -27,6 +27,7 @@
     "@google/genai": "^1.0.0",
     "@react-three/drei": "^10.0.0",
     "@react-three/fiber": "^9.0.0",
+    "@smithy/node-http-handler": "^4.12.1",
     "dotenv": "^17.0.0",
     "express": "^5.1.0",
     "idb": "^8.0.0",
@@ -39,7 +40,7 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.55.0",
+    "@playwright/test": "^1.63.0",
     "@types/aws-lambda": "^8.10.163",
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",

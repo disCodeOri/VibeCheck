@@ -22,6 +22,7 @@ export interface AppOptions {
   rateLimit?: { max: number; windowMs: number };
   maxConcurrent?: number;
   generationEnabled?: boolean;
+  allowedOrigins?: string[];
 }
 
 const dataUrl = z.string().min(32).startsWith('data:image/');
@@ -37,6 +38,15 @@ export const avatarSchema = z.object({ image: dataUrl.optional(), bodyImage: dat
 export const previewSchema = z.object({ image: dataUrl, kind: z.enum(['hair', 'outfit']), prompt: shortText, garmentImages: z.array(dataUrl).max(5).optional() }).strict();
 
 class HttpError extends Error { constructor(public status: number, public code: string, message: string, public retryAfter?: number) { super(message); } }
+
+/**
+ * Upstream provider messages routinely embed account internals (GCP project
+ * numbers, quota metric names, request URLs that carry the API key). They are
+ * never forwarded to the browser; a provider may only opt a message in by
+ * setting `clientSafe`, which our own code sets on messages it authored.
+ */
+interface ProviderError { code?: string; status?: number; message?: string; clientSafe?: boolean }
+const providerMessage = (error: ProviderError, fallback: string) => (error.clientSafe && error.message ? error.message : fallback);
 
 export async function normalizeImage(value: string): Promise<NormalizedImage> {
   const match = /^data:image\/(png|jpe?g|webp);base64,([A-Za-z0-9+/=]+)$/i.exec(value);
@@ -67,12 +77,16 @@ export function createApp(ai: AiService, options: AppOptions = {}) {
   const generationEnabled = options.generationEnabled ?? true;
   app.disable('x-powered-by');
   app.use(express.json({ limit: '42mb', strict: true }));
+  // Loopback covers local use. A deployment serves the SPA and the API from one
+  // origin, so same-origin requests send no Origin header at all; ALLOWED_ORIGIN
+  // exists so a split-origin deployment does not silently 403 every POST.
+  const extraOrigins = (options.allowedOrigins ?? (process.env.ALLOWED_ORIGIN ?? '').split(',')).map((value) => value.trim()).filter(Boolean);
   app.use((req, _res, next) => {
     const origin = req.get('origin');
     if (origin) {
       try {
         const url = new URL(origin);
-        if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) throw new Error();
+        if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) && !extraOrigins.includes(url.origin)) throw new Error();
       } catch { return next(new HttpError(403, 'ORIGIN_DENIED', 'This origin is not allowed.')); }
     }
     next();
@@ -100,6 +114,9 @@ export function createApp(ai: AiService, options: AppOptions = {}) {
   });
   app.use('/api', (req, res, next) => {
     if (req.method === 'GET') return next();
+    // The privacy switch must never be rate-limited alongside the AI calls it
+    // disables, or a user who spends their quota cannot turn processing off.
+    if (req.path === '/privacy') return next();
     const key = req.ip ?? 'local';
     const now = Date.now();
     let bucket = buckets.get(key);
@@ -148,18 +165,24 @@ export function createApp(ai: AiService, options: AppOptions = {}) {
   app.use((_req, _res, next) => next(new HttpError(404, 'NOT_FOUND', 'Route not found.')));
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     let normalized = error;
-    if (error instanceof ZodError || error instanceof SyntaxError) normalized = new HttpError(400, 'INVALID_REQUEST', 'The request payload is invalid.');
+    // Only a body-parse SyntaxError means a bad request. A SyntaxError raised
+    // while parsing the *provider's* reply is a provider fault, so it must not
+    // be reported to the user as an invalid payload.
+    if (error instanceof ZodError || (error instanceof SyntaxError && 'body' in (error as { body?: unknown }))) normalized = new HttpError(400, 'INVALID_REQUEST', 'The request payload is invalid.');
     if (normalized instanceof HttpError) return res.status(normalized.status).json({ error: { code: normalized.code, message: normalized.message, ...(normalized.retryAfter ? { retryAfter: normalized.retryAfter } : {}) } });
-    const provider = normalized as { code?: string; status?: number; message?: string };
+    const provider = normalized as ProviderError;
     if (provider.code === 'INVALID_REQUEST' && provider.status === 400) return res.status(400).json({error:{code:'INVALID_REQUEST',message:'This preview needs a supported garment reference image.'}});
     if (provider.code === 'INVALID_API_KEY' || provider.status === 401 || provider.status === 403) return res.status(503).json({ error: { code: 'AI_UNAVAILABLE', message: 'AI service is not configured or authorized.' } });
     if (provider.status === 429) {
       const isQuotaZero = provider.message?.includes('limit: 0') || provider.message?.includes('free_tier') || provider.message?.includes('Google AI Studio billing');
       const message = isQuotaZero
-        ? (provider.message ?? 'AI image generation requires Google AI Studio billing or an account with image quota.')
-        : (provider.message ?? 'AI quota is temporarily exhausted.');
+        // generatePreview supplies its own clientSafe wording for this case;
+        // this fallback covers the other endpoints, so it stays neutral.
+        ? providerMessage(provider, 'This AI model has no quota left on the configured account.')
+        : providerMessage(provider, 'AI quota is temporarily exhausted. Try again shortly.');
       return res.status(429).json({ error: { code: 'AI_QUOTA', message, retryAfter: 30 } });
     }
+    if (normalized instanceof SyntaxError) return res.status(502).json({ error: { code: 'AI_ERROR', message: 'The AI provider returned a malformed response.' } });
     if (provider.code === 'UNSUPPORTED_GENERATION') return res.status(501).json({ error: { code: 'UNSUPPORTED_GENERATION', message: 'Image generation is not supported by the configured model.' } });
     return res.status(502).json({ error: { code: 'AI_ERROR', message: 'The AI provider could not complete the request.' } });
   });

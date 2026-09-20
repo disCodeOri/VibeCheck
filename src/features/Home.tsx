@@ -1,33 +1,161 @@
 import {useState} from 'react';
-import {Link,useNavigate} from 'react-router-dom';
-import {ArrowRight,ArrowUpRight,Images} from 'lucide-react';
-import {Button} from '../components/ui';
+import {Link, useNavigate} from 'react-router-dom';
+import {ArrowRight, Images} from 'lucide-react';
+import {Button, PhotoPicker} from '../components/ui';
+import {useStore} from '../lib/context';
+import {garmentSheet} from '../lib/storage';
 
-export default function Home(){
-  const [mode,setMode]=useState('Story');
-  const nav=useNavigate();
-  const url=mode==='Story'?'/story':mode==='loox'?'/loox':'/chicfit';
-  return <div className="home">
-    <div className="home-intro">
-      <h1>Good taste.<br/>All you<span>.</span></h1>
-      <p className="home-subtitle">Look good. Feel right. Be you.</p>
+export default function Home() {
+  const [mode, setMode] = useState<'Story' | 'loox' | 'ChicFit'>('Story');
+  const nav = useNavigate();
+  const {state} = useStore();
+  const style = state.profile.style || 'soft';
+
+  const handlePhotoPicked = (imgData: string) => {
+    if (mode === 'Story') {
+      nav('/story', {state: {prefillImage: imgData}});
+    } else if (mode === 'loox') {
+      nav('/loox', {state: {prefillImage: imgData}});
+    } else {
+      nav('/chicfit', {state: {prefillImage: imgData}});
+    }
+  };
+
+  const primaryLabel =
+    mode === 'Story'
+      ? 'Check my story'
+      : mode === 'loox'
+      ? 'Explore loox'
+      : 'Build an outfit';
+
+  const primaryTarget =
+    mode === 'Story' ? '/story' : mode === 'loox' ? '/loox' : '/chicfit';
+
+  // Hero panel artwork, cropped from the v1 desktop targets. It is decorative:
+  // the wordmark, the encouragement note and the corner tag are part of the
+  // artwork, so they are not repeated as DOM overlays.
+  const heroModelImg = style === 'sharp' ? '/assets/hero-sharp.png' : '/assets/hero-soft.png';
+
+  const looxThumb =
+    style === 'sharp'
+      ? '/assets/male-portrait.png'
+      : '/assets/female-portrait.png';
+
+  const chicfitThumb =
+    style === 'sharp'
+      ? '/assets/male-outfit.png'
+      : '/assets/female-outfit.png';
+
+  const wardrobeThumb = garmentSheet(style);
+
+  return (
+    <div className="home-workspace">
+      {/* Top Heading */}
+      <header className="view-header">
+        <h1>Good taste. All you.</h1>
+        <p>Look good. Feel right. Be you.</p>
+      </header>
+
+      {/* Two-Column Hero Grid */}
+      <section className="home-hero-grid" aria-label="Hero section">
+        {/* Left Visual Card */}
+        <div className="hero-visual-card">
+          <img
+            className="hero-model-img"
+            src={heroModelImg}
+            alt={style === 'sharp' ? 'Your vibe. Looking sharp.' : 'Your vibe. So you, so good.'}
+          />
+        </div>
+
+        {/* Right Action Workbench */}
+        <div className="hero-workbench-card">
+          <div className="workbench-head">
+            <h2>What’s the move?</h2>
+            <p>A little clarity before you go.</p>
+          </div>
+
+          {/* Segmented Mode Selector */}
+          <div className="mode-segmented" role="group" aria-label="Feature mode selector">
+            {(['Story', 'loox', 'ChicFit'] as const).map(m => (
+              <button
+                type="button"
+                key={m}
+                className={mode === m ? 'active' : ''}
+                onClick={() => setMode(m)}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+
+          {/* Photo Dropzone */}
+          <PhotoPicker asDropzone onPick={handlePhotoPicked} />
+
+          {/* Action Buttons */}
+          <div className="workbench-actions">
+            <Button className="block" onClick={() => nav(primaryTarget)}>
+              {primaryLabel} <ArrowRight size={17} />
+            </Button>
+
+            <Button
+              secondary
+              className="block"
+              onClick={() => nav('/story?compare=1')}
+            >
+              <Images size={16} /> Compare two photos
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Bottom 3 Feature Shortcuts */}
+      <section className="home-shortcuts-grid" aria-label="Feature shortcuts">
+        {/* 1. loox */}
+        <Link to="/loox" className="shortcut-card">
+          <div className="shortcut-thumbnail">
+            <img src={looxThumb} alt="loox portrait preview" />
+          </div>
+          <div className="shortcut-info">
+            <h3>loox</h3>
+            <p>Find your next look.</p>
+          </div>
+          <div className="shortcut-arrow" aria-hidden="true">
+            <ArrowRight size={18} />
+          </div>
+        </Link>
+
+        {/* 2. ChicFit */}
+        <Link to="/chicfit" className="shortcut-card">
+          <div className="shortcut-thumbnail">
+            <img src={chicfitThumb} alt="ChicFit outfit preview" />
+          </div>
+          <div className="shortcut-info">
+            <h3>ChicFit</h3>
+            <p>Build an outfit.</p>
+          </div>
+          <div className="shortcut-arrow" aria-hidden="true">
+            <ArrowRight size={18} />
+          </div>
+        </Link>
+
+        {/* 3. Wardrobe */}
+        <Link to="/wardrobe" className="shortcut-card">
+          <div className="shortcut-thumbnail">
+            <img
+              src={wardrobeThumb}
+              alt="Wardrobe flatlay"
+              style={{objectFit: 'cover', objectPosition: 'center 20%'}}
+            />
+          </div>
+          <div className="shortcut-info">
+            <h3>Wardrobe</h3>
+            <p>Style what you own.</p>
+          </div>
+          <div className="shortcut-arrow" aria-hidden="true">
+            <ArrowRight size={18} />
+          </div>
+        </Link>
+      </section>
     </div>
-    <div className="hero-tabs" role="group" aria-label="Choose a style check">
-      {['Story','loox','ChicFit'].map(m=><button key={m} aria-pressed={mode===m} className={mode===m?'selected':''} onClick={()=>setMode(m)}>{m}</button>)}
-    </div>
-    <section className="hero-visual" aria-label="Your vibe, your way">
-      <img className="reference-hero" src="/assets/hero-v2.png" alt="A man in a cream linen shirt, with bold Your Vibe lettering behind him"/>
-      <div className="hero-sticker">LOOKING<br/>SHARP.</div>
-      <span className="sample-label">SAMPLE LOOK</span>
-    </section>
-    <section className="home-actions">
-      <Button onClick={()=>nav(url)}>{mode==='Story'?'Check my story':mode==='loox'?'Explore my look':'Open my wardrobe'}<ArrowRight size={17}/></Button>
-      <Button secondary onClick={()=>nav(mode==='Story'?'/story?compare=1':`${url}?demo=1`)}>{mode==='Story'?<><Images size={16}/>Compare two photos</>:<>Explore an example <ArrowRight size={16}/></>}</Button>
-    </section>
-    <div className="feature-shortcuts">
-      <Link to="/loox"><div className="shortcut-photo"><img src="/assets/portrait-v2.png" alt=""/></div><div><h3>loox</h3><p>New look.<br/>Same good energy.</p></div><ArrowUpRight size={16}/></Link>
-      <Link to="/chicfit"><div className="shortcut-photo garment-shortcut"/><div><h3>ChicFit</h3><p>Your wardrobe.<br/>More possibilities.</p></div><ArrowUpRight size={16}/></Link>
-    </div>
-    <Link className="home-example" to={`${url}?demo=1`}>Explore a sample {mode==='Story'?'check':mode==='loox'?'look':'wardrobe'} <ArrowUpRight size={13}/></Link>
-  </div>;
+  );
 }

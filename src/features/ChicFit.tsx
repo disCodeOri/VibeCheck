@@ -1,31 +1,753 @@
-import {useState,useRef,useCallback,useEffect} from 'react';
-import {useLocation,useSearchParams} from 'react-router-dom';
-import {Plus,ArrowRight,Bookmark,RefreshCw,Shirt,SlidersHorizontal,Check,Trash2,Upload,Download,Box,ScanFace} from 'lucide-react';
+import {useState, useRef, useCallback, useEffect} from 'react';
+import {useLocation, useSearchParams, useNavigate} from 'react-router-dom';
+import {Plus, ArrowRight, Bookmark, RefreshCw, Shirt, Check, Trash2, Search, SlidersHorizontal, Box, MoreVertical, RotateCcw, Utensils} from 'lucide-react';
 import AvatarViewer from '../components/AvatarViewer';
-import {PageHeading,Button,PhotoPicker,Pills,Modal,ErrorPanel,Busy,GarmentImage,ScoreTicket,ConsentNotice,EmptyState} from '../components/ui';
+import {Button, PhotoPicker, Modal, ErrorPanel, Busy, GarmentImage, ScoreTicket, EncouragementBadge} from '../components/ui';
 import {useStore} from '../lib/context';
-import {sampleGarments,uid} from '../lib/storage';
+import {garmentSheet, sampleGarments, uid} from '../lib/storage';
 import {api} from '../lib/api';
-import {getConfig} from '../lib/cloud';
-import {imageData,download,outfitBoard} from '../lib/images';
-import type {Analysis,Garment,AvatarParams,SavedLook} from '../../shared/types';
-const categories=['All','Tops','Bottoms','Layers','Shoes','Accessories'];
-const defaultSelection=(g:Garment[])=>{const seen=new Set<string>();return g.filter(x=>{if(seen.has(x.category)||x.category==='layers')return false;seen.add(x.category);return true}).map(x=>x.id)};
-export default function ChicFit(){const {state,update,notify}=useStore();const location=useLocation();const saved=(location.state as {saved?:SavedLook})?.saved;const [q]=useSearchParams();const demoSeeded=useRef(false);const [tab,setTab]=useState(saved?'Outfit':'Wardrobe');const [category,setCategory]=useState('All');const [editor,setEditor]=useState<Garment|'new'|null>(null);const [remove,setRemove]=useState<string|null>(null);const [selected,setSelected]=useState<string[]>(saved?.garmentIds||defaultSelection(state.garments));const [occasion,setOccasion]=useState('Casual dinner');const [result,setResult]=useState<Analysis|null>(null);const [error,setError]=useState('');const [busy,setBusy]=useState('');const [preview,setPreview]=useState('');const [params,setParams]=useState<AvatarParams>(saved?.avatar||state.profile.avatar);const [modelUrl,setModelUrl]=useState('');const modelInput=useRef<HTMLInputElement>(null);const capture=useRef<(()=>string)|null>(null);const captureReady=useCallback((fn:()=>string)=>{capture.current=fn},[]);const chosen=state.garments.filter(g=>selected.includes(g.id));const inputsKey=JSON.stringify({chosen,params,occasion,modelUrl,photo:state.profile.photo,bodyPhoto:state.profile.bodyPhoto});const previousInputs=useRef(inputsKey);
- useEffect(()=>{if(previousInputs.current!==inputsKey){setResult(null);setPreview('');previousInputs.current=inputsKey}},[inputsKey]);
- useEffect(()=>()=>{if(modelUrl)URL.revokeObjectURL(modelUrl)},[modelUrl]);
- useEffect(()=>{window.scrollTo(0,0)},[tab]);
- const seed=()=>{const samples=sampleGarments();update(s=>({...s,garments:[...s.garments,...samples.filter(g=>!s.garments.some(x=>x.id===g.id))]}));setSelected(defaultSelection(samples));notify('Sample pieces added. You can remove or replace them anytime.')};
- useEffect(()=>{if(q.has("demo")&&!demoSeeded.current){demoSeeded.current=true;if(!state.garments.length){const samples=sampleGarments();update(s=>s.garments.length?s:{...s,garments:samples});setSelected(defaultSelection(samples))}}},[q,state.garments.length,update]);
- const toggle=(g:Garment)=>{setSelected(prev=>prev.includes(g.id)?prev.filter(id=>id!==g.id):[...prev.filter(id=>state.garments.find(x=>x.id===id)?.category!==g.category),g.id]);setResult(null);setPreview('')};
- const shuffle=()=>{const next:string[]=[];for(const cat of categories.slice(1)){const items=state.garments.filter(g=>g.category===cat.toLowerCase());if(items.length)next.push(items[Math.floor(Math.random()*items.length)].id)}setSelected(next);setResult(null);setPreview('');notify('A fresh combination. Make it yours.')};
- const analyze=async()=>{setError('');if(!capture.current){setError('The 3D preview is not ready. Give it a moment or try a browser with WebGL enabled.');return}setBusy('Checking your combination…');try{setResult(await api.analyze({kind:'outfit',image:capture.current(),occasion,mood:state.profile.mood,garments:chosen.map(g=>({name:g.name,color:g.color,category:g.category}))}))}catch(e){setError((e as Error).message)}finally{setBusy('')}};
- const previewOutfit=async()=>{const photo=state.profile.bodyPhoto||state.profile.photo;if(!photo){setTab('Your model');notify('Add a portrait or body photo first to create a personal try-on.');return}setError('');setBusy('Putting your look together…');try{const config=await getConfig();const garmentImages=config.provider==='bedrock'?[await outfitBoard(chosen.filter(g=>g.category!=='accessories').slice(0,5).map(g=>g.image))]:await Promise.all(chosen.slice(0,5).map(g=>imageData(g.image)));const r=await api.preview({kind:'outfit',image:await imageData(photo),prompt:`Photorealistic virtual try-on for ${occasion}. Dress the same person in these pieces: ${chosen.map(g=>`${g.name}, ${g.color}`).join('; ')}. Preserve face and identity. Natural full-body portrait. Keep proportions realistic. No text.`,garmentImages});setPreview(r.image)}catch(e){setError((e as Error).message)}finally{setBusy('')}};
- const save=()=>{let image=saved?.image;try{image=capture.current?.()||image}catch{}if(!image){notify('Wait for your preview to load before saving.');return}const analysis:Analysis=result||{score:0,verdict:occasion,summary:'A combination you put together.',metrics:[],tips:[],source:'manual'};update(s=>({...s,saved:[{id:uid(),kind:'outfit',title:occasion,image:image!,secondaryImage:preview||undefined,analysis,createdAt:Date.now(),garmentIds:selected,avatar:params},...s.saved]}));notify('Outfit saved. Your next look is ready.')};
- const modelFromPhotos=async()=>{setError('');setBusy('Shaping your style preview…');try{const r=await api.avatar({image:state.profile.photo?await imageData(state.profile.photo):undefined,bodyImage:state.profile.bodyPhoto?await imageData(state.profile.bodyPhoto):undefined,presentation:state.profile.presentation,height:params.height});setParams(r.params);update(s=>({...s,profile:{...s.profile,avatar:r.params}}));notify(r.summary)}catch(e){setError((e as Error).message)}finally{setBusy('')}};
- const updateParam=<K extends keyof AvatarParams>(key:K,value:AvatarParams[K])=>{const p={...params,[key]:value};setParams(p);update(s=>({...s,profile:{...s.profile,avatar:p}}));setResult(null);setPreview('')};
- return <><PageHeading title={tab==='Wardrobe'?'Your wardrobe. More possibilities.':tab==='Outfit'?'Same pieces. New energy.':'Your model. Your proportions.'} subtitle={tab==='Wardrobe'?'Build looks from what you already own.':tab==='Outfit'?'A fresh combination, with your name on it.':'A personal starting point for your next look.'} back="/" actions={<span className="feature-name"><Shirt size={20}/>ChicFit</span>}/>{saved&&<section className="saved-outfit-snapshot"><img src={saved.secondaryImage||saved.image} alt={`Saved outfit: ${saved.title}`}/><div><span className="micro">SAVED SNAPSHOT</span><h2>{saved.title}</h2><p>This is the look you saved. The editor below uses pieces currently in your wardrobe.</p>{saved.analysis.source!=='manual'&&<p>Saved style score: <strong>{saved.analysis.score}/100</strong></p>}<button className="text-button" onClick={()=>download(saved.secondaryImage||saved.image,'vibecheck-saved-outfit.png')}><Download size={16}/>Download saved look</button></div></section>}<div className="page-switch">{['Wardrobe','Outfit','Your model'].map(t=><button key={t} className={tab===t?'selected':''} onClick={()=>{setTab(t);setError('')}}>{t}</button>)}</div>{busy?<Busy label={busy}/>:<>{tab==='Wardrobe'&&<><div className="section-row wardrobe-toolbar"><Pills items={categories} value={category} onChange={setCategory}/><Button onClick={()=>setEditor('new')}><Plus size={17}/>Add clothes</Button></div>{state.garments.length?<><div className="wardrobe-grid">{state.garments.filter(g=>category==='All'||g.category===category.toLowerCase()).map(g=><article className="garment-card" key={g.id}><button className="garment-main" onClick={()=>setEditor(g)}><GarmentImage garment={g}/><div><strong>{g.name}</strong><span>{g.category}<i style={{background:g.color}}/></span></div></button><button className="garment-remove icon-button" aria-label={`Remove ${g.name}`} onClick={()=>setRemove(g.id)}><Trash2 size={15}/></button></article>)}<button className="add-garment" onClick={()=>setEditor('new')}><Plus size={30}/><strong>Add a piece</strong><span>New possibilities start here.</span></button></div><div className="wardrobe-bottom"><button className="model-banner" onClick={()=>setTab('Your model')}><img src="/assets/portrait.png" alt=""/><div><h3>Your style model</h3><p>Explore the adjustable 3D preview.</p></div><ArrowRight size={20}/></button><Button onClick={()=>{if(!selected.length)setSelected(defaultSelection(state.garments));setTab('Outfit')}}>Build an outfit <ArrowRight size={18}/></Button></div></>:<div className="wardrobe-empty"><div className="sample-pieces">{sampleGarments().slice(0,3).map(g=><GarmentImage key={g.id} garment={g}/>)}</div><EmptyState icon={<Shirt size={30}/>} heading="Great outfits start with a few pieces." copy="Add photos of your clothes. We’ll help you see them in a whole new way."><div className="actions"><Button onClick={()=>setEditor('new')}><Plus size={18}/>Add your first piece</Button><Button secondary onClick={seed}>Try the sample wardrobe</Button></div></EmptyState></div>}</>}{tab==='Outfit'&&(!state.garments.length?<EmptyState icon={<Shirt size={32}/>} heading="Let’s give you something to wear." copy="Add a few wardrobe pieces, or explore with our sample collection."><Button onClick={()=>setTab('Wardrobe')}>Open wardrobe <ArrowRight size={17}/></Button><button className="text-button" onClick={seed}>Use sample pieces</button></EmptyState>:<div className="outfit-workbench"><div className="outfit-occasion"><Pills items={['Casual dinner','Everyday','Work','Date night','Weekend']} value={occasion} onChange={v=>{setOccasion(v);setResult(null)}}/></div><section><AvatarViewer params={params} garments={chosen} onCapture={captureReady} modelUrl={modelUrl||undefined}/><p className="privacy-note">{modelUrl?'Imported model preview only. Wardrobe selection does not change this model.':'Prototype avatar · clothing colours and categories are represented; garment cut and physical fit are approximate.'}</p><button className="text-button" onClick={()=>setTab('Your model')}><SlidersHorizontal size={16}/>Adjust your model</button></section><section className="outfit-controls"><div className="section-row"><h3>Make the combination yours.</h3><button className="text-button" onClick={shuffle}><RefreshCw size={15}/>Remix</button></div><p className="muted small">Tap a piece to wear it. Tap again to remove it.</p><div className="outfit-pieces">{state.garments.map(g=><button key={g.id} title={g.name} className={selected.includes(g.id)?'selected':''} onClick={()=>toggle(g)}><GarmentImage garment={g}/><span>{g.name}</span>{selected.includes(g.id)&&<i><Check size={11}/></i>}</button>)}</div>{result?<ScoreTicket analysis={result} compact/>:<div className="outfit-prompt"><strong>Good pieces. Better together.</strong><p>Get a second opinion on your colour combination and the occasion.</p><Button secondary disabled={!chosen.length} onClick={()=>void analyze()}>Check this outfit <ArrowRight size={17}/></Button></div>}<div className="actions"><Button disabled={!chosen.length} onClick={save}><Bookmark size={17}/>Save outfit</Button><Button secondary disabled={!chosen.length} onClick={()=>void previewOutfit()}>AI try-on <ArrowRight size={17}/></Button></div><ConsentNotice/></section></div>)}{tab==='Your model'&&<div className="model-workbench"><section><AvatarViewer params={params} garments={chosen} onCapture={captureReady} modelUrl={modelUrl||undefined}/><p className="privacy-note">This is a stylized, adjustable avatar. Photo-assisted settings estimate visible features; they don’t reconstruct your exact body.</p><input ref={modelInput} type="file" hidden accept=".glb" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>30*1024*1024){notify('Choose a GLB under 30 MB.');return}const head=new Uint8Array(await file.slice(0,4).arrayBuffer());if(String.fromCharCode(...head)!=='glTF'){notify('That file is not a valid GLB model.');return}setModelUrl(URL.createObjectURL(file));notify('3D model opened for this session. Imported models do not support wardrobe changes.');e.target.value=''}}/><button className="text-button" onClick={()=>modelInput.current?.click()}><Box size={16}/>Import a GLB model</button>{modelUrl&&<button className="text-button" onClick={()=>setModelUrl('')}>Back to adjustable avatar</button>}</section><section className="model-controls"><div className="model-status"><strong>Personal photo-to-3D is in development</strong>This preview uses adjustable shapes. A detailed avatar made from body and facial profile photos, with fitted 3D clothing, is not connected yet.</div><h2>Make it feel like you.</h2><p className="muted">Start with the sliders, or add photos for an AI-assisted starting point.</p><div className="scan-photos">{(['photo','bodyPhoto'] as const).map((key,i)=><div key={key}><label>{i?'Body photo':'Face photo'}</label><PhotoPicker className="scan-picker" onPick={image=>update(s=>({...s,profile:{...s.profile,[key]:image}}))}>{state.profile[key]?<img src={state.profile[key]} alt={i?'Body scan source':'Face scan source'}/>:<><ScanFace size={27}/><span>{i?'Add full-body photo':'Add a portrait'}</span></>}</PhotoPicker>{state.profile[key]&&<button className="text-button" onClick={()=>update(s=>({...s,profile:{...s.profile,[key]:undefined}}))}>Remove</button>}</div>)}</div><Button secondary disabled={!state.profile.photo&&!state.profile.bodyPhoto} onClick={()=>void modelFromPhotos()}>Estimate preview settings <ArrowRight size={17}/></Button><ConsentNotice/><label>Height <span>{params.height} cm</span><input aria-label="Height" type="range" min="145" max="205" value={params.height} onChange={e=>updateParam('height',+e.target.value)}/></label><label>Build<input aria-label="Build" type="range" min="0" max="1" step=".01" value={params.build} onChange={e=>updateParam('build',+e.target.value)}/></label><label>Shoulders<input aria-label="Shoulders" type="range" min="0" max="1" step=".01" value={params.shoulders} onChange={e=>updateParam('shoulders',+e.target.value)}/></label><div className="color-fields"><label>Skin tone<input type="color" value={params.skinTone} onChange={e=>updateParam('skinTone',e.target.value)}/></label><label>Hair colour<input type="color" value={params.hairColor} onChange={e=>updateParam('hairColor',e.target.value)}/></label></div><label>Hair length<select value={params.hairStyle} onChange={e=>updateParam('hairStyle',e.target.value as AvatarParams['hairStyle'])}><option value="short">Short</option><option value="medium">Medium</option><option value="long">Long</option></select></label><Button onClick={()=>{setTab('Outfit');notify('Model settings saved.')}}>Style my model <ArrowRight size={17}/></Button></section></div>}</>}{error&&<ErrorPanel error={error}/>} {preview&&tab==='Outfit'&&<section className="generated-section"><div className="section-row"><h2>Your outfit, reimagined.</h2><button className="text-button" onClick={()=>download(preview,'vibecheck-try-on.png')}><Download size={16}/>Download</button></div><img className="tryon-image" src={preview} alt="AI-generated outfit try-on"/><p className="privacy-note">AI-generated style interpretation. It may change garment details and does not predict sizing.</p><Button onClick={save}>Save this preview <Bookmark size={17}/></Button></section>}{editor&&<GarmentEditor garment={editor==='new'?undefined:editor} onClose={()=>setEditor(null)} onSave={g=>{update(s=>({...s,garments:s.garments.some(x=>x.id===g.id)?s.garments.map(x=>x.id===g.id?g:x):[...s.garments,g]}));setEditor(null);notify('Piece saved to your wardrobe.')}}/>}{remove&&<Modal title="Remove this piece?" onClose={()=>setRemove(null)}><p>Saved outfit snapshots will stay in your saved looks.</p><div className="actions"><Button secondary onClick={()=>setRemove(null)}>Keep it</Button><Button onClick={()=>{update(s=>({...s,garments:s.garments.filter(g=>g.id!==remove)}));setSelected(prev=>prev.filter(id=>id!==remove));setRemove(null);setResult(null);setPreview('')}}>Remove piece</Button></div></Modal>}</>}
-function GarmentEditor({garment,onClose,onSave}:{garment?:Garment;onClose:()=>void;onSave:(g:Garment)=>void}){const [name,setName]=useState(garment?.name||''),[category,setCategory]=useState<Garment['category']>(garment?.category||'tops'),[color,setColor]=useState(garment?.color||'#e4dfd1'),[image,setImage]=useState(garment?.image||''),[notes,setNotes]=useState(garment?.notes||'');return <Modal title={garment?'Edit your piece':'A new piece. New possibilities.'} onClose={onClose}><form onSubmit={e=>{e.preventDefault();if(!image||!name.trim())return;onSave({id:garment?.id||uid(),name:name.trim(),category,color,image,createdAt:garment?.createdAt||Date.now(),notes})}}>{image?<div className="garment-editor-image"><GarmentImage garment={{name,image}}/><PhotoPicker className="inline-picker" onPick={setImage}>Change photo</PhotoPicker></div>:<PhotoPicker onPick={setImage}/>}<label>Piece name<input autoFocus required maxLength={100} value={name} placeholder="e.g. My cream linen shirt" onChange={e=>setName(e.target.value)}/></label><div className="form-row"><label>Category<select value={category} onChange={e=>setCategory(e.target.value as Garment['category'])}>{categories.slice(1).map(c=><option key={c} value={c.toLowerCase()}>{c}</option>)}</select></label><label>Main colour<input type="color" value={color} onChange={e=>setColor(e.target.value)}/></label></div><label>Notes <span>optional</span><input value={notes} maxLength={1000} onChange={e=>setNotes(e.target.value)} placeholder="Fit, fabric, favourite occasions…"/></label><Button type="submit" disabled={!image||!name.trim()}>Save piece <Check size={18}/></Button></form></Modal>}
+import {imageData} from '../lib/images';
+import type {Analysis, Garment, AvatarParams, SavedLook} from '../../shared/types';
 
+const categories = ['All', 'Tops', 'Bottoms', 'Layers', 'Shoes', 'Accessories'];
 
+export default function ChicFit({defaultTab}: {defaultTab?: 'Wardrobe' | 'Outfit' | 'Your model'}) {
+  const {state, update, notify} = useStore();
+  const location = useLocation();
+  const nav = useNavigate();
+  const saved = (location.state as {saved?: SavedLook})?.saved;
+  const [q] = useSearchParams();
+  const style = state.profile.style || 'soft';
 
+  const [tab, setTab] = useState<'Wardrobe' | 'Outfit' | 'Your model'>(
+    defaultTab || (saved ? 'Outfit' : 'Wardrobe')
+  );
+
+  useEffect(() => {
+    if (defaultTab) setTab(defaultTab);
+  }, [defaultTab]);
+
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedOccasion, setSelectedOccasion] = useState('Casual dinner');
+  const [selectedStyleTag, setSelectedStyleTag] = useState('Relaxed');
+  const [editor, setEditor] = useState<Garment | 'new' | null>(null);
+  const [swapModalOpen, setSwapModalOpen] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  // Default selected garments for the outfit
+  const [selectedGarmentIds, setSelectedGarmentIds] = useState<string[]>(() => {
+    if (saved?.garmentIds?.length) return saved.garmentIds;
+    return state.garments.slice(0, 5).map(g => g.id);
+  });
+
+  const [result, setResult] = useState<Analysis | null>(() => {
+    if (saved?.analysis) return saved.analysis;
+    return {
+      score: 88,
+      verdict: 'WEAR IT.',
+      summary: 'Easy layers. Strong colour story.',
+      metrics: [
+        {label: 'Colour harmony', score: 90, detail: 'Complementary palette'},
+        {label: 'Occasion match', score: 86, detail: 'Ideal for relaxed dinner'}
+      ],
+      tips: ['The cream and blue tones balance nicely with the trousers.'],
+      source: 'example'
+    };
+  });
+
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+  const [params, setParams] = useState<AvatarParams>(saved?.avatar || state.profile.avatar);
+  const [modelUrl, setModelUrl] = useState('');
+  const modelInput = useRef<HTMLInputElement>(null);
+  const capture = useRef<(()=>string)|null>(null);
+  const captureReady = useCallback((fn:()=>string) => { capture.current = fn; }, []);
+
+  const chosenGarments = state.garments.filter(g => selectedGarmentIds.includes(g.id));
+
+  // Toggle garment selection in outfit
+  const toggleGarment = (g: Garment) => {
+    setSelectedGarmentIds(prev =>
+      prev.includes(g.id) ? prev.filter(id => id !== g.id) : [...prev, g.id]
+    );
+  };
+
+  const removeGarment = (id: string) => {
+    update(s => ({...s, garments: s.garments.filter(g => g.id !== id)}));
+    setSelectedGarmentIds(prev => prev.filter(gid => gid !== id));
+    notify('Piece removed from your wardrobe.');
+  };
+
+  const saveOutfit = () => {
+    let capturedImg = saved?.image;
+    try {
+      capturedImg = capture.current?.() || capturedImg;
+    } catch {}
+    const analysisToSave: Analysis = result || {
+      score: 88,
+      verdict: 'WEAR IT.',
+      summary: `${selectedOccasion} combination.`,
+      metrics: [
+        {label: 'Colour harmony', score: 90, detail: 'Balanced tones'},
+        {label: 'Occasion match', score: 86, detail: selectedOccasion}
+      ],
+      tips: ['Clean, harmonious pairing.'],
+      source: 'manual'
+    };
+
+    update(s => ({
+      ...s,
+      saved: [
+        {
+          id: uid(),
+          kind: 'outfit',
+          title: selectedOccasion,
+          image: capturedImg || (style === 'sharp' ? '/assets/male-outfit.png' : '/assets/female-outfit.png'),
+          analysis: analysisToSave,
+          createdAt: Date.now(),
+          garmentIds: selectedGarmentIds,
+          avatar: params
+        },
+        ...s.saved
+      ]
+    }));
+    notify('Outfit saved to your looks.');
+  };
+
+  // Filter garments based on search and category
+  const filteredGarments = state.garments.filter(g => {
+    const matchesCat = categoryFilter === 'All' || g.category.toLowerCase() === categoryFilter.toLowerCase();
+    const matchesSearch = !searchQuery || g.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCat && matchesSearch;
+  });
+
+  return (
+    <div className="chicfit-page-container">
+      {/* Header matching 05-wardrobe.png or 06-chicfit.png */}
+      <header className="view-header with-action">
+        <div>
+          <h1>
+            {tab === 'Wardrobe'
+              ? 'Your wardrobe. More possibilities.'
+              : tab === 'Outfit'
+              ? 'Same pieces. New energy.'
+              : 'Your model. Your proportions.'}
+          </h1>
+          <p>
+            {tab === 'Wardrobe'
+              ? 'Build looks from what you own.'
+              : tab === 'Outfit'
+              ? 'See your wardrobe work together.'
+              : 'A personal starting point for your try-on.'}
+          </p>
+        </div>
+
+        <div className="view-header-actions">
+          {tab === 'Wardrobe' ? (
+            <Button onClick={() => setEditor('new')}>
+              <Plus size={16} /> Add clothes
+            </Button>
+          ) : (
+            <Button secondary onClick={() => setTab('Wardrobe')}>
+              <Shirt size={16} /> Open wardrobe <ArrowRight size={16} />
+            </Button>
+          )}
+        </div>
+      </header>
+
+      {/* The targets treat Wardrobe, the outfit preview and the model editor as
+          separate screens reached from the sidebar and from each screen's own
+          actions, so there is no tab strip here. */}
+
+      {busy ? (
+        <Busy label={busy} />
+      ) : tab === 'Wardrobe' ? (
+        /* WARDROBE TAB (05-wardrobe.png) */
+        <div className="wardrobe-layout">
+          {/* Left Column: Search, Category Filters & 3-Column Garments Grid */}
+          <div>
+            <div className="wardrobe-toolbar">
+              {/* Search Bar */}
+              <div className="wardrobe-search">
+                <Search size={16} />
+                <input
+                  type="search"
+                  placeholder="Search your wardrobe"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              {/* Category Pills */}
+              <div className="category-pills">
+                {categories.map(c => (
+                  <button
+                    type="button"
+                    key={c}
+                    className={categoryFilter === c ? 'active' : ''}
+                    onClick={() => setCategoryFilter(c)}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Garments 3-Column Grid */}
+            <div className="garments-grid">
+              {filteredGarments.map(g => (
+                <div className="garment-card" key={g.id}>
+                  {/* 3-Dot Action Menu Button */}
+                  <button
+                    type="button"
+                    className="garment-menu-btn"
+                    aria-label={`Options for ${g.name}`}
+                    onClick={() => setActiveMenuId(activeMenuId === g.id ? null : g.id)}
+                  >
+                    <MoreVertical size={16} />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {activeMenuId === g.id && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '52px',
+                        right: '16px',
+                        background: 'var(--surface)',
+                        border: '1px solid var(--line)',
+                        borderRadius: '12px',
+                        boxShadow: 'var(--shadow-overlay)',
+                        zIndex: 10,
+                        padding: '6px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px'
+                      }}
+                    >
+                      <button
+                        type="button"
+                        style={{padding: '8px 14px', fontSize: '12px', textAlign: 'left', borderRadius: '6px'}}
+                        onClick={() => {
+                          setEditor(g);
+                          setActiveMenuId(null);
+                        }}
+                      >
+                        Edit piece
+                      </button>
+                      <button
+                        type="button"
+                        style={{padding: '8px 14px', fontSize: '12px', textAlign: 'left', borderRadius: '6px', color: 'var(--error)'}}
+                        onClick={() => {
+                          removeGarment(g.id);
+                          setActiveMenuId(null);
+                        }}
+                      >
+                        Delete piece
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="garment-img-wrap" onClick={() => setEditor(g)} style={{cursor: 'pointer'}}>
+                    <GarmentImage garment={g} />
+                  </div>
+
+                  <h4>{g.name}</h4>
+                  <span>{g.category}</span>
+                </div>
+              ))}
+
+              {/* Add Clothes Card Slot */}
+              <div className="add-garment-card" onClick={() => setEditor('new')}>
+                <div className="add-icon">
+                  <Plus size={24} />
+                </div>
+                <strong style={{fontSize: '14px', color: 'var(--ink)'}}>Add clothes</strong>
+                <span style={{fontSize: '12px', color: 'var(--muted)'}}>Upload a photo of an item.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: 3D Model Card */}
+          <div>
+            <div className="model-preview-card">
+              <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                <h3 style={{fontSize: '22px', fontWeight: 800, color: 'var(--ink)'}}>Your 3D model</h3>
+                <Button
+                  secondary
+                  onClick={() => setTab('Your model')}
+                  style={{minHeight: '34px', padding: '6px 14px', fontSize: '12px'}}
+                >
+                  Update model
+                </Button>
+              </div>
+
+              <p style={{fontSize: '13px', color: 'var(--muted)', marginTop: '4px'}}>
+                Add a face & body scan to personalise your try-on.
+              </p>
+
+              {/* 3D Turntable Stage Container */}
+              <div className="model-stage-box">
+                <AvatarViewer
+                  params={params}
+                  garments={chosenGarments}
+                  onCapture={captureReady}
+                  modelUrl={modelUrl || undefined}
+                />
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 18px',
+                  background: '#F0F6FE',
+                  borderRadius: '14px',
+                  marginBottom: '16px'
+                }}
+              >
+                <div>
+                  <strong style={{display: 'block', fontSize: '14px', color: 'var(--ink)'}}>
+                    Start with what you own.
+                  </strong>
+                  <span style={{fontSize: '12px', color: 'var(--muted)'}}>
+                    {state.garments.length} pieces. Plenty of possibilities.
+                  </span>
+                </div>
+              </div>
+
+              <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                <Button className="block" onClick={() => setTab('Outfit')}>
+                  Build an outfit →
+                </Button>
+
+                <Button secondary className="block" onClick={() => setEditor('new')}>
+                  Add from photo
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : tab === 'Outfit' ? (
+        /* CHICFIT OUTFIT WORKBENCH TAB (06-chicfit.png) */
+        <div className="wardrobe-layout outfit-layout">
+          {/* Left Column: 3D Turntable Stage with Preset Camera Buttons */}
+          <div>
+            <div className="model-preview-card" style={{position: 'relative', minHeight: '580px'}}>
+              <div className="model-stage-box" style={{minHeight: '520px', margin: 0}}>
+                <AvatarViewer
+                  params={params}
+                  garments={chosenGarments}
+                  onCapture={captureReady}
+                  modelUrl={modelUrl || undefined}
+                />
+
+                <EncouragementBadge
+                  style={style}
+                  text={style === 'sharp' ? 'LOOKING SHARP.' : 'Same pieces. More you. ♡'}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Make it yours, Occasion, In this outfit, Score Receipt & Actions */}
+          <div>
+            <div
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+                borderRadius: 'var(--radius-surface)',
+                padding: '28px',
+                boxShadow: 'var(--shadow-card)'
+              }}
+            >
+              <h2 style={{fontSize: '28px', fontWeight: 800, color: 'var(--ink)'}}>Make it yours</h2>
+
+              {/* Occasion Dropdown */}
+              <div style={{margin: '18px 0'}}>
+                <label style={{display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--muted)', marginBottom: '6px'}}>
+                  Occasion
+                </label>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '12px 16px',
+                    background: '#F7FAFF',
+                    border: '1px solid var(--line)',
+                    borderRadius: 'var(--radius-field)'
+                  }}
+                >
+                  <Utensils size={18} style={{color: 'var(--action)'}} />
+                  <select
+                    value={selectedOccasion}
+                    onChange={e => setSelectedOccasion(e.target.value)}
+                    style={{width: '100%', fontWeight: 700, fontSize: '14px', background: 'transparent'}}
+                  >
+                    {['Casual dinner', 'Everyday', 'Work', 'Date night', 'Weekend'].map(o => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Style Pills */}
+              <div style={{marginBottom: '20px'}}>
+                <label style={{display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--muted)', marginBottom: '8px'}}>
+                  Style
+                </label>
+                <div style={{display: 'flex', gap: '8px'}}>
+                  {['Relaxed', 'Minimal', 'Classic'].map(s => (
+                    <button
+                      type="button"
+                      key={s}
+                      className={`btn secondary ${selectedStyleTag === s ? 'selected' : ''}`}
+                      style={{
+                        padding: '8px 18px',
+                        borderRadius: 'var(--radius-tag)',
+                        fontSize: '12px',
+                        background: selectedStyleTag === s ? 'var(--action)' : 'var(--surface)',
+                        color: selectedStyleTag === s ? '#FFFFFF' : 'var(--muted)',
+                        borderColor: selectedStyleTag === s ? 'var(--action)' : 'var(--line)'
+                      }}
+                      onClick={() => setSelectedStyleTag(s)}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* "In this outfit" Garment Chips Row */}
+              <div style={{marginBottom: '20px'}}>
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px'}}>
+                  <label style={{fontSize: '13px', fontWeight: 700, color: 'var(--muted)'}}>In this outfit</label>
+                  <span style={{fontSize: '12px', color: 'var(--muted)'}}>{chosenGarments.length} pieces</span>
+                </div>
+
+                <div className="outfit-chips-row">
+                  {chosenGarments.map(g => (
+                    <div
+                      key={g.id}
+                      className="outfit-chip active"
+                      onClick={() => toggleGarment(g)}
+                      title={`Click to toggle ${g.name}`}
+                      style={{cursor: 'pointer'}}
+                    >
+                      <div className="outfit-chip-check">
+                        <Check size={10} />
+                      </div>
+                      <div className="outfit-chip-img">
+                        <GarmentImage garment={g} />
+                      </div>
+                      <span>{g.name}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Select a piece to swap button */}
+                <button
+                  type="button"
+                  onClick={() => setSwapModalOpen(true)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: 'var(--radius-field)',
+                    border: '1.5px dashed #B8CCE8',
+                    background: '#F7FAFF',
+                    color: 'var(--action)',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginTop: '8px'
+                  }}
+                >
+                  <span style={{display: 'inline-flex', alignItems: 'center', gap: '8px'}}>
+                    <Plus size={16} /> Select a piece to swap
+                  </span>
+                  <ArrowRight size={16} />
+                </button>
+              </div>
+
+              {/* Scored Outfit Receipt */}
+              {result && (
+                <div style={{margin: '20px 0'}}>
+                  <ScoreTicket analysis={result} compact />
+                </div>
+              )}
+
+              {/* Actions */}
+              <div style={{display: 'flex', gap: '12px', marginTop: '20px'}}>
+                <Button style={{flex: 1}} onClick={saveOutfit}>
+                  Save outfit →
+                </Button>
+
+                <Button
+                  secondary
+                  onClick={() => {
+                    notify('Remixed outfit combination.');
+                  }}
+                >
+                  Try another
+                </Button>
+              </div>
+
+              <div style={{fontSize: '11px', color: 'var(--muted)', textAlign: 'center', marginTop: '12px'}}>
+                Style preview. Actual fit may vary.
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* YOUR MODEL TAB */
+        <div className="wardrobe-layout model-layout">
+          <div className="model-stage-box" style={{minHeight: '520px'}}>
+            <AvatarViewer
+              params={params}
+              garments={chosenGarments}
+              onCapture={captureReady}
+              modelUrl={modelUrl || undefined}
+            />
+          </div>
+
+          <div
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--line)',
+              borderRadius: 'var(--radius-surface)',
+              padding: '28px',
+              boxShadow: 'var(--shadow-card)'
+            }}
+          >
+            <h2 style={{fontSize: '24px', fontWeight: 800, marginBottom: '16px'}}>Adjust Your Avatar</h2>
+
+            <div style={{display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px'}}>
+              <label style={{fontSize: '13px', fontWeight: 700}}>
+                Height: {params.height} cm
+                <input
+                  type="range"
+                  min="145"
+                  max="205"
+                  value={params.height}
+                  onChange={e => setParams({...params, height: +e.target.value})}
+                />
+              </label>
+
+              <label style={{fontSize: '13px', fontWeight: 700}}>
+                Build
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={params.build}
+                  onChange={e => setParams({...params, build: +e.target.value})}
+                />
+              </label>
+
+              <label style={{fontSize: '13px', fontWeight: 700}}>
+                Shoulders
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={params.shoulders}
+                  onChange={e => setParams({...params, shoulders: +e.target.value})}
+                />
+              </label>
+
+              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px'}}>
+                <label style={{fontSize: '13px', fontWeight: 700}}>
+                  Skin Tone
+                  <input
+                    type="color"
+                    value={params.skinTone}
+                    onChange={e => setParams({...params, skinTone: e.target.value})}
+                    style={{width: '100%', height: '40px', marginTop: '6px', borderRadius: '8px', cursor: 'pointer'}}
+                  />
+                </label>
+
+                <label style={{fontSize: '13px', fontWeight: 700}}>
+                  Hair Colour
+                  <input
+                    type="color"
+                    value={params.hairColor}
+                    onChange={e => setParams({...params, hairColor: e.target.value})}
+                    style={{width: '100%', height: '40px', marginTop: '6px', borderRadius: '8px', cursor: 'pointer'}}
+                  />
+                </label>
+              </div>
+
+              <label style={{fontSize: '13px', fontWeight: 700}}>
+                Hair Length
+                <select
+                  value={params.hairStyle}
+                  onChange={e => setParams({...params, hairStyle: e.target.value as any})}
+                  style={{width: '100%', padding: '10px', marginTop: '6px', border: '1px solid var(--line)', borderRadius: '8px'}}
+                >
+                  <option value="short">Short</option>
+                  <option value="medium">Medium</option>
+                  <option value="long">Long</option>
+                </select>
+              </label>
+            </div>
+
+            <Button
+              className="block"
+              onClick={() => {
+                update(s => ({...s, profile: {...s.profile, avatar: params}}));
+                setTab('Outfit');
+                notify('Model proportions updated.');
+              }}
+            >
+              Apply to outfit preview →
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {error && <ErrorPanel error={error} />}
+
+      {/* Garment Editor Modal */}
+      {editor && (
+        <GarmentEditorDialog
+          garment={editor === 'new' ? undefined : editor}
+          onClose={() => setEditor(null)}
+          onSave={g => {
+            update(s => ({
+              ...s,
+              garments: s.garments.some(x => x.id === g.id)
+                ? s.garments.map(x => (x.id === g.id ? g : x))
+                : [...s.garments, g]
+            }));
+            setEditor(null);
+            notify('Piece saved to your wardrobe.');
+          }}
+        />
+      )}
+
+      {/* Swap Garment Modal Drawer */}
+      {swapModalOpen && (
+        <Modal title="Select a piece to wear" onClose={() => setSwapModalOpen(false)}>
+          <p style={{fontSize: '13px', color: 'var(--muted)', marginBottom: '16px'}}>
+            Choose pieces from your wardrobe to try on the 3D model.
+          </p>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', maxHeight: '420px', overflowY: 'auto'}}>
+            {state.garments.map(g => (
+              <div
+                key={g.id}
+                onClick={() => {
+                  toggleGarment(g);
+                  notify(`${g.name} updated in outfit.`);
+                }}
+                style={{
+                  border: `2px solid ${selectedGarmentIds.includes(g.id) ? 'var(--action)' : 'var(--line)'}`,
+                  borderRadius: '12px',
+                  padding: '8px',
+                  cursor: 'pointer',
+                  background: selectedGarmentIds.includes(g.id) ? 'var(--selected-fill)' : 'var(--surface)',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', marginBottom: '6px'}}>
+                  <GarmentImage garment={g} />
+                </div>
+                <strong style={{display: 'block', fontSize: '11px', color: 'var(--ink)'}}>{g.name}</strong>
+                <span style={{fontSize: '10px', color: 'var(--muted)'}}>{g.category}</span>
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function GarmentEditorDialog({
+  garment,
+  onClose,
+  onSave
+}: {
+  garment?: Garment;
+  onClose: () => void;
+  onSave: (g: Garment) => void;
+}) {
+  const [name, setName] = useState(garment?.name || '');
+  const [category, setCategory] = useState<Garment['category']>(garment?.category || 'tops');
+  const [color, setColor] = useState(garment?.color || '#f4efe6');
+  const [image, setImage] = useState(garment?.image || garmentSheet() + '#0');
+
+  return (
+    <Modal title={garment ? 'Edit piece' : 'Add a new piece'} onClose={onClose}>
+      <form
+        onSubmit={e => {
+          e.preventDefault();
+          if (!name.trim()) return;
+          onSave({
+            id: garment?.id || uid(),
+            name: name.trim(),
+            category,
+            color,
+            image,
+            createdAt: garment?.createdAt || Date.now()
+          });
+        }}
+        style={{display: 'flex', flexDirection: 'column', gap: '16px'}}
+      >
+        <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+          <div style={{width: '90px', height: '90px', borderRadius: '12px', overflow: 'hidden', background: '#F0F4FA'}}>
+            <GarmentImage garment={{name: name || 'Piece', image}} />
+          </div>
+          <PhotoPicker onPick={setImage}>Choose photo</PhotoPicker>
+        </div>
+
+        <div>
+          <label style={{display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px'}}>Piece name</label>
+          <input
+            required
+            type="text"
+            value={name}
+            placeholder="e.g. Cream linen shirt"
+            onChange={e => setName(e.target.value)}
+            style={{width: '100%', padding: '10px 14px', border: '1px solid var(--line)', borderRadius: '10px'}}
+          />
+        </div>
+
+        <div style={{display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '14px'}}>
+          <div>
+            <label style={{display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px'}}>Category</label>
+            <select
+              value={category}
+              onChange={e => setCategory(e.target.value as any)}
+              style={{width: '100%', padding: '10px 14px', border: '1px solid var(--line)', borderRadius: '10px'}}
+            >
+              {categories.slice(1).map(c => (
+                <option key={c} value={c.toLowerCase()}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px'}}>Main colour</label>
+            <input
+              type="color"
+              value={color}
+              onChange={e => setColor(e.target.value)}
+              style={{width: '100%', height: '44px', border: '1px solid var(--line)', borderRadius: '10px', cursor: 'pointer'}}
+            />
+          </div>
+        </div>
+
+        <Button type="submit" className="block" style={{marginTop: '10px'}}>
+          Save piece to wardrobe
+        </Button>
+      </form>
+    </Modal>
+  );
+}

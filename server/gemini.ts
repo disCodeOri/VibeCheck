@@ -133,7 +133,9 @@ export class GeminiService implements AiService {
       const index = sortedIndices[attempt];
       const key = this.keys[index];
       const client = this.getClientForKey(key);
-      const maskedKey = `${key.slice(0, 10)}...${key.slice(-4)}`;
+      // Never log a key prefix: it is the identifying part. Only the last 4
+      // characters, which are enough to tell pooled keys apart in a log.
+      const maskedKey = `...${key.slice(-4)}`;
 
       try {
         const result = await operation(client, key, index);
@@ -234,9 +236,11 @@ export class GeminiService implements AiService {
       return { image: `data:${output.mimeType};base64,${output.data}`, mimeType: output.mimeType };
     } catch (err: any) {
       if (err.status === 429 || err.message?.includes('limit: 0') || err.message?.includes('free_tier')) {
+        // clientSafe: this message is ours, not the provider's, so the error
+        // handler may show it. Raw provider text is never marked safe.
         throw Object.assign(
           new Error('AI image generation requires Google AI Studio billing or an account with image quota. Free-tier Gemini keys do not include image generation quota.'),
-          { code: 'AI_QUOTA', status: 429, retryAfter: 30 }
+          { code: 'AI_QUOTA', status: 429, retryAfter: 30, clientSafe: true }
         );
       }
       throw err;

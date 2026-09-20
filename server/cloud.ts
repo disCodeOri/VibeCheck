@@ -91,8 +91,7 @@ async function downloads(sub:string,body:Record<string,unknown>,deps:CloudDepend
 
 async function createJob(sub:string,body:Record<string,unknown>,deps:CloudDependencies){
   assertKeys(body,['path','body']);
-  const paths:JobPath[]=['/analyze','/compare','/avatar','/generate-preview'];
-  if(!paths.includes(body.path as JobPath)||!body.body||typeof body.body!=='object'||Array.isArray(body.body))throw new CloudError(400,'INVALID_REQUEST','Job path or body is invalid.');
+  if(!JOB_PATHS.includes(body.path as JobPath)||!body.body||typeof body.body!=='object'||Array.isArray(body.body))throw new CloudError(400,'INVALID_REQUEST','Job path or body is invalid.');
   const serialized=JSON.stringify(body.body); if(Buffer.byteLength(serialized)>350_000)throw new CloudError(413,'REQUEST_TOO_LARGE','Job metadata is too large.');
   const id=deps.uuid?.()??randomUUID(); const now=deps.now?.()??Date.now();
   const day=new Date(now).toISOString().slice(0,10);
@@ -136,8 +135,22 @@ export async function dispatchCloudRequest(event:APIGatewayProxyEventV2,deps:Clo
   } catch(error){return errorResult(error);}
 }
 
+/**
+ * A worker killed by a Lambda timeout or OOM never reaches its catch block, so
+ * the job would stay 'running' forever and the client would poll until it gave
+ * up. A claim records when it was taken and a claim older than STALE_CLAIM_MS
+ * (comfortably past the function timeout) may be taken over by a later attempt.
+ */
+export const STALE_CLAIM_MS = 360_000;
 export async function claimJob(job:WorkerJob,deps:CloudDependencies){
-  try {await deps.db.send(new UpdateCommand({TableName:deps.table,Key:jobKey(job.sub,job.id),UpdateExpression:'SET #s=:running',ConditionExpression:'#s=:pending',ExpressionAttributeNames:{'#s':'status'},ExpressionAttributeValues:{':running':'running',':pending':'pending'}}));return true;}
+  const now=deps.now?.()??Date.now();
+  try {await deps.db.send(new UpdateCommand({
+    TableName:deps.table,Key:jobKey(job.sub,job.id),
+    UpdateExpression:'SET #s=:running, claimedAt=:now',
+    ConditionExpression:'#s=:pending OR (#s=:running AND claimedAt < :stale)',
+    ExpressionAttributeNames:{'#s':'status'},
+    ExpressionAttributeValues:{':running':'running',':pending':'pending',':now':now,':stale':now-STALE_CLAIM_MS},
+  }));return true;}
   catch(error){if((error as {name?:string}).name==='ConditionalCheckFailedException')return false;throw error;}
 }
 export async function finishJob(job:WorkerJob,result:unknown,deps:CloudDependencies){
@@ -150,9 +163,14 @@ export async function finishJob(job:WorkerJob,result:unknown,deps:CloudDependenc
   await deps.db.send(new UpdateCommand({TableName:deps.table,Key:jobKey(job.sub,job.id),UpdateExpression:'SET #s=:complete,#r=:result REMOVE #b',ExpressionAttributeNames:{'#s':'status','#r':'result','#b':'body'},ExpressionAttributeValues:{':complete':'complete',':result':result}}));
 }
 export async function failJob(job:WorkerJob,deps:CloudDependencies){await deps.db.send(new UpdateCommand({TableName:deps.table,Key:jobKey(job.sub,job.id),UpdateExpression:'SET #s=:failed,#e=:error REMOVE #b',ExpressionAttributeNames:{'#s':'status','#e':'error','#b':'body'},ExpressionAttributeValues:{':failed':'failed',':error':{code:'AI_ERROR',message:'The AI service could not complete the request.'}}}));}
+export const JOB_PATHS:JobPath[]=['/analyze','/compare','/avatar','/generate-preview'];
 export async function loadJob(pk:string,sk:string,deps:CloudDependencies):Promise<WorkerJob|undefined>{
   const item=(await deps.db.send(new GetCommand({TableName:deps.table,Key:{pk,sk},ConsistentRead:true}))).Item;
   if(!item||item.entity!=='job'||typeof item.sub!=='string'||typeof item.id!=='string'||typeof item.path!=='string'||!item.body||typeof item.body!=='object')return undefined;
+  // Re-check the path on read. Trusting the stored value would let an unknown
+  // path fall through executeJob's switch and complete a job with no result,
+  // which the client cannot distinguish from a job still in flight.
+  if(!JOB_PATHS.includes(item.path as JobPath))return undefined;
   return {sub:item.sub,id:item.id,path:item.path as JobPath,body:item.body as Record<string,unknown>};
 }
 

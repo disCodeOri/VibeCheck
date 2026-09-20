@@ -4,7 +4,7 @@ import { readState, writeState, validateBackup, defaultState } from '../src/lib/
 describe('device storage', () => {
   it('persists wardrobe and saved records across reads', async () => {
     const state = defaultState(); state.profile.name = 'Arjun';
-    state.garments.push({id:'test',name:'Jacket',category:'layers',color:'#112233',image:'/assets/garments.png#1',createdAt:1});
+    state.garments.push({id:'test',name:'Jacket',category:'layers',color:'#112233',image:'/assets/garments-soft.png#1',createdAt:1});
     await writeState(state); expect((await readState()).profile.name).toBe('Arjun');
     expect((await readState()).garments.find(g=>g.id==='test')?.name).toBe('Jacket');
   });

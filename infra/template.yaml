@@ -54,9 +54,12 @@ Resources:
       PublicAccessBlockConfiguration: {BlockPublicAcls: true, IgnorePublicAcls: true, BlockPublicPolicy: true, RestrictPublicBuckets: true}
       CorsConfiguration:
         CorsRules:
+          # Only the app's own CloudFront origin may exercise a presigned URL
+          # from a browser. Presigning already gates access; this stops any
+          # other page from driving an upload or download on the user's behalf.
           - AllowedHeaders: ['content-type']
             AllowedMethods: [GET, HEAD, PUT]
-            AllowedOrigins: ['*']
+            AllowedOrigins: [!Sub 'https://${Distribution.DomainName}']
             MaxAge: 300
       LifecycleConfiguration:
         Rules:
@@ -129,6 +132,11 @@ Resources:
       Events:
         Health: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/health, Method: GET}}
         Config: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/config, Method: GET}}
+        # Read-only Cedar dry run with no image and no provider call, so the
+        # demo's policy proof works on the deployed site too. POST /api/privacy
+        # is deliberately NOT routed: that switch is per-process state, which is
+        # meaningless (and cross-tenant) in a shared Lambda container.
+        PrivacyProof: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/privacy/proof, Method: GET}}
         Analyze: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/analyze, Method: POST, Auth: {Authorizer: CognitoJwt}}}
         Compare: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/compare, Method: POST, Auth: {Authorizer: CognitoJwt}}}
         Avatar: {Type: HttpApi, Properties: {ApiId: !Ref HttpApi, Path: /api/avatar, Method: POST, Auth: {Authorizer: CognitoJwt}}}

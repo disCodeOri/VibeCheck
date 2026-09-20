@@ -1,19 +1,328 @@
-import {useState,useRef} from 'react';
-import {useSearchParams,useLocation} from 'react-router-dom';
-import {ArrowRight,Bookmark,Check,Download,ScanFace,Eye,EyeOff} from 'lucide-react';
-import {PageHeading,PhotoPicker,Button,Busy,ErrorPanel,ConsentNotice,ScoreTicket,Pills} from '../components/ui';
+import {useState, useRef} from 'react';
+import {useSearchParams, useLocation} from 'react-router-dom';
+import {ArrowRight, Bookmark, Check, Download, RefreshCw, Scissors, Sparkles, Waves, Eye, EyeOff} from 'lucide-react';
+import {Button, Busy, ErrorPanel, Modal, PhotoPicker, PhotoCallouts, EncouragementBadge} from '../components/ui';
 import {api} from '../lib/api';
 import {useStore} from '../lib/context';
-import {exampleLoox,uid} from '../lib/storage';
-import {imageData,download} from '../lib/images';
-import type {Analysis,SavedLook} from '../../shared/types';
-export default function Loox(){const [q]=useSearchParams();const location=useLocation();const saved=(location.state as {saved?:SavedLook})?.saved;const demo=q.has('demo');const {state,update,notify}=useStore();const [photo,setPhoto]=useState(saved?.image||(demo?'/assets/portrait-v2.png':state.profile.photo||''));const [result,setResult]=useState<Analysis|null>(saved?.analysis||(demo?exampleLoox:null));const [goal,setGoal]=useState('Everyday');const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [selected,setSelected]=useState(Math.max(0,saved?.analysis.hairstyles?.findIndex(h=>h.name===saved.title)??0));const revision=useRef(0);const [preview,setPreview]=useState(saved?.secondaryImage||'');const [previewBusy,setPreviewBusy]=useState(false);const [showCallouts,setShowCallouts]=useState(true);
- const choose=(s:string)=>{revision.current++;setPhoto(s);setResult(null);setPreview('');setError('')};
- const run=async()=>{setBusy(true);setError('');try{setResult(await api.analyze({kind:'loox',image:await imageData(photo),mood:goal}));setPreview('');setSelected(0)}catch(e){setError((e as Error).message)}finally{setBusy(false)}};
- const generate=async()=>{if(!result?.hairstyles?.[selected])return;const requestRevision=revision.current;setPreviewBusy(true);setError('');try{const style=result.hairstyles[selected];const data=await api.preview({image:await imageData(photo),kind:'hair',prompt:`Show the hairstyle ${style.name}: ${style.description}. Preserve this person's face, identity, skin tone, pose, expression, clothing and background. Only change the hairstyle. Natural realistic hair.`});if(requestRevision===revision.current)setPreview(data.image)}catch(e){if(requestRevision===revision.current)setError((e as Error).message)}finally{setPreviewBusy(false)}};
- const save=()=>{if(!result)return;update(s=>({...s,saved:[{id:uid(),kind:'loox',title:result.hairstyles?.[selected]?.name||'My look',image:photo,secondaryImage:preview||undefined,analysis:result,createdAt:Date.now()},...s.saved]}));notify('Look saved. Come back to it anytime.')};
- return <><PageHeading title="Your look. Your energy." subtitle="Small details. Still you." back="/" actions={<span className="feature-name"><ScanFace size={19}/>loox</span>}/>{busy?<Busy label="Taking a closer look…"/>:<div className={result ? "workbench has-result" : "workbench"}><section className="photo-column">{photo?<div className="loox-photo"><img src={photo} alt="Portrait for your look"/>{showCallouts&&result?.callouts?.map((c,i)=><button className={`photo-callout side-${i%2}`} style={{left:`${Math.max(7,Math.min(80,c.x))}%`,top:`${Math.max(7,Math.min(82,c.y))}%`}} key={i} title={c.detail} onClick={()=>notify(c.detail)}><i/><span>{c.label}</span></button>)}<span className="encouragement">LOOKING<br/>SHARP.</span><PhotoPicker className="change-photo" onPick={choose}>Change portrait</PhotoPicker></div>:<><PhotoPicker onPick={choose}/><div className="upload-options"><PhotoPicker camera className="inline-picker" onPick={choose}>Take a selfie</PhotoPicker><button className="text-button" onClick={()=>{setPhoto('/assets/portrait-v2.png');setResult(exampleLoox)}}>Explore an example <ArrowRight size={15}/></button></div></>}{result&&<button className="text-button callout-toggle" onClick={()=>setShowCallouts(!showCallouts)}>{showCallouts?<EyeOff size={16}/>:<Eye size={16}/>} {showCallouts?'Hide':'Show'} highlights</button>}<div className="portrait-tips"><span>Natural light</span><span>Face forward</span><span>Keep hair in frame</span></div></section><section className="detail-column">{result?<><div className="loox-summary"><span className="micro">{result.source==='example'?'EXAMPLE STYLE MATCH':'STYLE MATCH'}</span><div className="loox-score"><b>{result.score}<small>%</small></b><p>{result.summary}</p></div></div><div className="section-row"><h2>Try a hairstyle</h2><span>Same you. New energy.</span></div><div className="hairstyle-options">{result.hairstyles?.map((h,i)=><button key={h.name} className={selected===i?'selected':''} onClick={()=>{revision.current++;setSelected(i);setPreview('')}}>{result.source==="example"?<span className="hair-example-image" aria-hidden="true" style={{backgroundPosition:`${i*50}% center`}}/>:<span className="hair-option-number">0{i+1}</span>}<div><strong>{h.name}</strong><p>{h.description}</p></div>{selected===i&&<Check size={17}/>}</button>)}</div><p className="hairstyle-description">{result.source==="example"&&<span className="micro">SAMPLE STYLE INSPIRATION<br/></span>}{result.hairstyles?.[selected]?.description}</p>{result.hairstyles?.length?<><Button loading={previewBusy} onClick={()=>void generate()}>Preview this hairstyle <ArrowRight size={18}/></Button><p className="privacy-note">Creates an AI image preview using your portrait. Results are an interpretation, not a guaranteed haircut.</p></>:null}<Button secondary onClick={save}><Bookmark size={17}/>Save this look</Button><ul className="insights">{result.tips.map(t=><li key={t}><Check size={15}/>{t}</li>)}</ul>{result.source==='example'&&<div className="example-note">Illustrative feedback. <button onClick={()=>void run()}>Analyze this portrait with AI</button></div>}</>:<div className="analysis-setup"><span className="micro">IT STARTS WITH YOU</span><h2>Find your next look.</h2><p>A clear portrait helps us offer thoughtful hair and grooming suggestions.</p><h3>What’s your goal?</h3><Pills items={['Everyday','Professional','Night out','Something new']} value={goal} onChange={setGoal}/><ConsentNotice/><Button disabled={!photo} onClick={()=>void run()}>Explore my look <ArrowRight size={17}/></Button><p className="privacy-note">We review styling choices, not your worth. You make the final call.</p></div>}</section></div>}{error&&<ErrorPanel error={error}/>} {preview&&<section className="generated-section"><div className="section-row"><h2>Same you. A new possibility.</h2><button className="text-button" onClick={()=>download(preview,'vibecheck-hairstyle.png')}><Download size={16}/>Download</button></div><div className="compare-grid"><div><span className="micro">ORIGINAL</span><img src={photo} alt="Original hairstyle"/></div><div><span className="micro">AI PREVIEW</span><img src={preview} alt="AI-generated hairstyle preview"/></div></div><Button onClick={save}><Bookmark size={17}/>Save this preview</Button></section>}</>}
+import {exampleLoox, uid} from '../lib/storage';
+import {imageData, download} from '../lib/images';
+import type {Analysis, SavedLook} from '../../shared/types';
 
+export default function Loox() {
+  const [q] = useSearchParams();
+  const location = useLocation();
+  const {state, update, notify} = useStore();
+  const style = state.profile.style || 'soft';
 
+  const saved = (location.state as {saved?: SavedLook})?.saved;
+  const prefillImage = (location.state as {prefillImage?: string})?.prefillImage;
 
+  const defaultPortrait =
+    style === 'sharp' ? '/assets/male-portrait.png' : '/assets/female-portrait.png';
 
+  const [photo, setPhoto] = useState(saved?.image || prefillImage || defaultPortrait);
+  const [result, setResult] = useState<Analysis | null>(saved?.analysis || exampleLoox);
+  const [selectedStyleIndex, setSelectedStyleIndex] = useState(1); // Default to 'Soft layers'
+  const [showHighlights, setShowHighlights] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [preview, setPreview] = useState(saved?.secondaryImage || '');
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const revision = useRef(0);
+
+  const choosePhoto = (s: string) => {
+    revision.current++;
+    setPhoto(s);
+    setResult(null);
+    setPreview('');
+    setError('');
+  };
+
+  const runAnalysis = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api.analyze({
+        kind: 'loox',
+        image: await imageData(photo),
+        mood: 'Everyday'
+      });
+      setResult(res);
+      setPreview('');
+      setSelectedStyleIndex(0);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const generatePreview = async () => {
+    if (!result?.hairstyles?.[selectedStyleIndex]) return;
+    const currentRev = revision.current;
+    setPreviewBusy(true);
+    setError('');
+    try {
+      const chosenStyle = result.hairstyles[selectedStyleIndex];
+      const data = await api.preview({
+        image: await imageData(photo),
+        kind: 'hair',
+        prompt: `Show the hairstyle ${chosenStyle.name}: ${chosenStyle.description}. Preserve this person's face, identity, skin tone, pose, expression, clothing and background. Only change the hairstyle. Natural realistic hair.`
+      });
+      if (currentRev === revision.current) {
+        setPreview(data.image);
+      }
+    } catch (e) {
+      if (currentRev === revision.current) setError((e as Error).message);
+    } finally {
+      setPreviewBusy(false);
+    }
+  };
+
+  const saveLook = () => {
+    if (!result) return;
+    const title = result.hairstyles?.[selectedStyleIndex]?.name || 'My look';
+    update(s => ({
+      ...s,
+      saved: [
+        {
+          id: uid(),
+          kind: 'loox',
+          title,
+          image: photo,
+          secondaryImage: preview || undefined,
+          analysis: result,
+          createdAt: Date.now()
+        },
+        ...s.saved
+      ]
+    }));
+    notify('Look saved. Come back to it anytime.');
+  };
+
+  // Pre-configured hairstyles matching 04-loox.png
+  const hairstyles = result?.hairstyles || [
+    {name: 'Original', description: 'Natural and effortless.'},
+    {name: 'Soft layers', description: 'Modern and flattering.'},
+    {name: 'Curtain bangs', description: 'Fresh and versatile.'}
+  ];
+
+  return (
+    <div className="loox-page-container">
+      {/* Top Header matching 04-loox.png */}
+      <header className="view-header with-action">
+        <div>
+          <h1>Your look. Your energy.</h1>
+          <p>Small details. Still you.</p>
+        </div>
+
+        <PhotoPicker onPick={choosePhoto}>
+          <span style={{display: 'inline-flex', alignItems: 'center', gap: '6px'}}>
+            <RefreshCw size={15} /> Change portrait
+          </span>
+        </PhotoPicker>
+      </header>
+
+      {busy ? (
+        <Busy label="Taking a closer look at your style details…" />
+      ) : (
+        <div className="loox-workbench">
+          {/* Left Column: Portrait with Callouts & Highlights Toggle */}
+          <div>
+            <div className="loox-photo-container">
+              <img src={photo} alt="Portrait analysis" />
+
+              {/* Callout Pins */}
+              <PhotoCallouts
+                callouts={
+                  result?.callouts || [
+                    {label: 'Natural volume', detail: 'Keeps some height through the crown.', x: 57, y: 13},
+                    {label: 'Face-framing', detail: 'Soft tendrils frame the face.', x: 30, y: 35},
+                    {label: 'Soft texture', detail: 'Gentle wave complements natural curl.', x: 65, y: 48}
+                  ]
+                }
+                show={showHighlights}
+              />
+
+              <EncouragementBadge
+                style={style}
+                text={style === 'sharp' ? 'LOOKING SHARP.' : 'You’ve got this ♡'}
+              />
+            </div>
+
+            {/* Below Photo Toggle Bar */}
+            <div
+              style={{
+                marginTop: '14px',
+                padding: '12px 18px',
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+                borderRadius: 'var(--radius-field)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
+              <label className="switch-field">
+                <input
+                  type="checkbox"
+                  checked={showHighlights}
+                  onChange={e => setShowHighlights(e.target.checked)}
+                />
+                <span className="switch-track" aria-hidden="true" />
+                Show highlights
+              </label>
+
+              <span style={{fontSize: '15px', color: 'var(--muted)'}}>
+                See what makes this look work for you.
+              </span>
+            </div>
+          </div>
+
+          {/* Right Column: Hairstyle Selector, Match Banner & Why It Works */}
+          <div>
+            <div
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+                borderRadius: 'var(--radius-surface)',
+                padding: '28px',
+                boxShadow: 'var(--shadow-card)'
+              }}
+            >
+              <h2 style={{fontSize: 'var(--fs-section)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--ink)'}}>Find your next look</h2>
+
+              {/* 3 Hairstyle Cards */}
+              <div className="hair-options-grid">
+                {hairstyles.slice(0, 3).map((h, i) => (
+                  <div
+                    key={h.name}
+                    className={`hair-card ${selectedStyleIndex === i ? 'selected' : ''}`}
+                    onClick={() => {
+                      setSelectedStyleIndex(i);
+                      setPreview('');
+                    }}
+                  >
+                    <img
+                      className="hair-card-img"
+                      src={photo}
+                      alt={h.name}
+                    />
+                    {selectedStyleIndex === i && (
+                      <span className="hair-check-badge">
+                        <Check size={14} />
+                      </span>
+                    )}
+                    <h4>{h.name}</h4>
+                    <p>{h.description}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Style Match Banner */}
+              <div className="style-match-banner">
+                <div className="banner-val">93%</div>
+                <div className="banner-text">
+                  <strong>Style match</strong>
+                  <span>{hairstyles[selectedStyleIndex]?.name || 'Soft layers'} suit your look.</span>
+                </div>
+              </div>
+
+              {/* Why It Works Card */}
+              <div className="why-it-works-card">
+                <h3>Why it works</h3>
+                <div className="why-it-works-grid">
+                <div className="why-item">
+                  <div className="why-icon">
+                    <Waves size={18} />
+                  </div>
+                  <div className="why-content">
+                    <h4>Keeps your natural texture</h4>
+                    <p>Works with what you have, not against it.</p>
+                  </div>
+                </div>
+
+                <div className="why-item">
+                  <div className="why-icon">
+                    <Scissors size={18} />
+                  </div>
+                  <div className="why-content">
+                    <h4>Frames your face</h4>
+                    <p>Adds shape and natural movement.</p>
+                  </div>
+                </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                <Button className="block" onClick={saveLook}>
+                  Save this look →
+                </Button>
+
+                <div style={{display: 'flex', gap: '10px'}}>
+                  <Button
+                    secondary
+                    style={{flex: 1}}
+                    loading={previewBusy}
+                    onClick={() => void generatePreview()}
+                  >
+                    <Sparkles size={16} /> AI Preview
+                  </Button>
+
+                  <Button
+                    secondary
+                    style={{flex: 1}}
+                    onClick={() => {
+                      setSelectedStyleIndex((selectedStyleIndex + 1) % hairstyles.length);
+                      notify('Switched to next recommendation.');
+                    }}
+                  >
+                    Try another style
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Generated AI Preview Section */}
+            {preview && (
+              <div
+                style={{
+                  marginTop: '24px',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--line)',
+                  borderRadius: 'var(--radius-surface)',
+                  padding: '24px',
+                  boxShadow: 'var(--shadow-card)'
+                }}
+              >
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px'}}>
+                  <h3 style={{fontSize: '18px', fontWeight: 800}}>Hairstyle Preview</h3>
+                  <Button
+                    secondary
+                    onClick={() => download(preview, 'vibecheck-hair-preview.png')}
+                    style={{minHeight: '34px', padding: '6px 14px', fontSize: '12px'}}
+                  >
+                    <Download size={14} /> Download
+                  </Button>
+                </div>
+
+                <img
+                  src={preview}
+                  alt="Generated hairstyle preview"
+                  style={{width: '100%', borderRadius: '14px', marginBottom: '16px'}}
+                />
+
+                <Button className="block" onClick={saveLook}>
+                  <Bookmark size={16} /> Save this preview
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {error && <ErrorPanel error={error} onRetry={() => void runAnalysis()} />}
+    </div>
+  );
+}

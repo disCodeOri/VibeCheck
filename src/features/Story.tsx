@@ -1,22 +1,724 @@
-import {useState} from 'react';
-import ComparisonSummary from '../components/ComparisonSummary';
-import {useSearchParams,useLocation} from 'react-router-dom';
-import {ArrowRight,Bookmark,Crop,Copy,Download,Images,Plus,X,Check} from 'lucide-react';
-import {Button,PageHeading,PhotoPicker,Pills,ScoreTicket,ErrorPanel,Busy,ConsentNotice,Modal} from '../components/ui';
+import {useState, useEffect} from 'react';
+import {useSearchParams, useLocation, useNavigate} from 'react-router-dom';
+import {ArrowRight, Bookmark, Crop, Copy, Download, Images, Sparkles, RefreshCw, FileText, Check} from 'lucide-react';
+import {Button, ScoreTicket, ErrorPanel, Busy, Modal, PhotoPicker, EncouragementBadge} from '../components/ui';
 import {useStore} from '../lib/context';
 import {api} from '../lib/api';
-import {imageData,cropImage,download} from '../lib/images';
-import {exampleAnalysis,uid} from '../lib/storage';
-import type {Analysis,CompareResult,SavedLook} from '../../shared/types';
-export default function Story(){const [query]=useSearchParams();const location=useLocation();const saved=(location.state as {saved?:SavedLook})?.saved;const {state,update,notify}=useStore();const demo=query.has('demo');const [compare,setCompare]=useState(query.has('compare'));const [image,setImage]=useState(saved?.image||(demo?'/assets/portrait-v2.png':''));const [imageB,setImageB]=useState('');const [refs,setRefs]=useState<string[]>([]);const [format,setFormat]=useState('Story');const [mood,setMood]=useState(state.profile.mood);const [result,setResult]=useState<Analysis|null>(saved?.analysis||(demo?exampleAnalysis:null));const [comparison,setComparison]=useState<CompareResult|null>(null);const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [crop,setCrop]=useState(false);const [captions,setCaptions]=useState(false);
- const changeImage=(src:string)=>{setImage(src);setResult(null);setComparison(null);setError('')};
- const run=async()=>{setBusy(true);setError('');try{const referenceImages=await Promise.all(refs.map(imageData));if(compare){setComparison(await api.compare({imageA:await imageData(image),imageB:await imageData(imageB),mood,referenceImages}))}else{setResult(await api.analyze({kind:'story',image:await imageData(image),mood,format:format.toLowerCase() as 'story'|'post',referenceImages}))}}catch(e){setError((e as Error).message)}finally{setBusy(false)}};
- const save=(photo=image,analysis=result)=>{if(!analysis)return;update(s=>({...s,saved:[{id:uid(),kind:'story',title:analysis.verdict,image:photo,analysis,createdAt:Date.now()},...s.saved]}));notify('Saved to your looks.')};
- const sampleComparison=async()=>{try{const original='/assets/portrait-v2.png';const cropped=await cropImage(await imageData(original),1.18,43,4/5);setImage(original);setImageB(cropped);setRefs([]);setComparison({winner:'b',summary:'A closer frame puts the focus on you.',a:{...exampleAnalysis,score:85,metrics:exampleAnalysis.metrics.map(m=>({...m,score:m.score-9}))},b:exampleAnalysis,source:'example'});setError('')}catch{notify('Could not open the sample comparison. Try again.')}};
- const sample=()=>{changeImage('/assets/portrait-v2.png');setResult(exampleAnalysis);setCompare(false)};
- return <><PageHeading title={compare?'Same you. Clearer choice.':'Story Check'} subtitle={compare?'Put two photos side by side. Find the one that feels right.':'A little perspective before you post.'} back="/" actions={<div className="segmented">{['Story','Post'].map(s=><button key={s} className={format===s?'selected':''} onClick={()=>{setFormat(s);setResult(null);setComparison(null)}}>{s}</button>)}</div>}/><div className="page-switch"><button className={!compare?'selected':''} onClick={()=>{setCompare(false);setError('')}}>Check a photo</button><button className={compare?'selected':''} onClick={()=>{setCompare(true);setError('')}}><Images size={16}/>Compare photos</button></div>{busy?<Busy label={compare?'Finding the stronger story…':'Checking the light, framing, and feeling…'}/>:<>{compare?<><div className="compare-grid">{[{src:image,set:changeImage,label:'Photo A'},{src:imageB,set:(v:string)=>{setImageB(v);setComparison(null)},label:'Photo B'}].map(({src,set,label})=><section key={label} className={`compare-photo ${comparison?.winner===label.slice(-1).toLowerCase()?"recommended":""}`}><div className="section-row"><h3>{label}</h3>{src&&<PhotoPicker className="inline-picker" onPick={set}>Change</PhotoPicker>}</div>{src?<img src={src} alt={label}/>:<PhotoPicker onPick={set}/>}</section>)}</div>{comparison?<div className="comparison-result"><ComparisonSummary comparison={comparison} refs={refs}/><div className="actions"><Button onClick={()=>save(comparison.winner==='b'?imageB:image,comparison.winner==='b'?comparison.b:comparison.a)}><Bookmark size={17}/>Save {comparison.winner==='tie'?'photo A':'the selected photo'}</Button><Button secondary onClick={()=>{setComparison(null);setImageB('')}}>Try another pair</Button></div></div>:<div className="analysis-setup"><h3>What’s the vibe?</h3><Pills items={['Effortless','Playful','Bold','Professional','Romantic']} value={mood} onChange={setMood}/><ReferencePicker refs={refs} setRefs={setRefs}/><ConsentNotice/><Button disabled={!image||!imageB} onClick={()=>void run()}>Compare my photos <ArrowRight size={17}/></Button><button className="text-button" onClick={()=>void sampleComparison()}>Explore a sample comparison <ArrowRight size={15}/></button></div>}</>:<div className={result ? "workbench has-result" : "workbench"}><section className="photo-column">{image?<div className="photo-frame"><img src={image} alt="Your selected photo"/><span className="photo-label">{result?.source==='example'?'EXAMPLE PHOTO':'YOUR PHOTO'}</span><PhotoPicker className="change-photo" onPick={changeImage}>Change photo</PhotoPicker>{result&&<span className="encouragement">OWN THE<br/>MOMENT.</span>}</div>:<><PhotoPicker onPick={changeImage}/><div className="upload-options"><PhotoPicker camera className="inline-picker" onPick={changeImage}>Take a selfie</PhotoPicker><button className="text-button" onClick={sample}>Explore an example <ArrowRight size={15}/></button></div></>}<p className="photo-footnote">Real moments. Your point of view.</p></section><section className="detail-column">{result?<><ScoreTicket analysis={result}/><div className="actions"><Button onClick={()=>setCrop(true)}><Crop size={17}/>Try a closer crop</Button><Button secondary onClick={()=>save()}><Bookmark size={17}/>Save this check</Button></div><button className="text-button" onClick={()=>setCaptions(true)}>Finishing touches <ArrowRight size={16}/></button>{result.source==='example'&&<div className="example-note">This is an example, not a live analysis. <button onClick={()=>void run()}>Check this photo with AI</button></div>}</>:<div className="analysis-setup"><span className="micro">MAKE IT YOURS</span><h2>What’s the vibe?</h2><p>Pick the feeling you’re going for. We’ll look at the composition, light, and how it all comes together.</p><Pills items={['Effortless','Playful','Bold','Professional','Romantic']} value={mood} onChange={setMood}/><ReferencePicker refs={refs} setRefs={setRefs}/><ConsentNotice/><Button onClick={()=>void run()} disabled={!image}>Check my {format.toLowerCase()} <ArrowRight size={18}/></Button></div>}</section></div>}{error&&<ErrorPanel error={error} onRetry={()=>void run()}/>}</>}{crop&&<CropDialog image={image} format={format} onClose={()=>setCrop(false)} onUse={src=>{changeImage(src);setCrop(false);notify('Crop applied. Run a fresh check when you’re ready.')}}/>}{captions&&<Modal title="Finishing touches" onClose={()=>setCaptions(false)}><p className="muted">A starting point. Give it your own voice.</p><div className="caption-list">{(result?.captions?.length?result.captions:['Keep it simple. Let the photo do the talking.']).map(c=><div key={c}><p>{c}</p><button className="icon-button" aria-label={`Copy ${c}`} onClick={()=>void navigator.clipboard.writeText(c).then(()=>notify('Caption copied.')).catch(()=>notify('Copy isn’t available in this browser.'))}><Copy size={18}/></button></div>)}</div></Modal>}</>}
-function ReferencePicker({refs,setRefs}:{refs:string[];setRefs:(r:string[])=>void}){return <section className="references"><div className="section-row"><h3>Your style references</h3><span>Optional · up to 3</span></div><p>Recent posts you love. We’ll compare their visual style and patterns.</p><div className="reference-thumbs">{refs.map((r,i)=><div key={i}><img src={r} alt={`Style reference ${i+1}`}/><button aria-label={`Remove reference ${i+1}`} onClick={()=>setRefs(refs.filter((_,n)=>n!==i))}><X size={12}/></button></div>)}{refs.length<3&&<PhotoPicker className="reference-add" onPick={s=>setRefs([...refs,s])}><Plus size={21}/><span>Add reference</span></PhotoPicker>}</div></section>}
-function CropDialog({image,format,onClose,onUse}:{image:string;format:string;onClose:()=>void;onUse:(s:string)=>void}){const [zoom,setZoom]=useState(1.1),[offset,setOffset]=useState(40),[preview,setPreview]=useState(''),[busy,setBusy]=useState(false);const {notify}=useStore();const generate=async(use:boolean)=>{setBusy(true);try{const data=await cropImage(await imageData(image),zoom,offset,format==='Story'?9/16:4/5);setPreview(data);if(use)onUse(data)}catch{notify('Could not crop that image. Try another photo.')}finally{setBusy(false)}};return <Modal title="Find your frame" onClose={onClose}><div className="crop-preview" style={{aspectRatio:format==='Story'?'9 / 16':'4 / 5'}}>{preview?<img src={preview} alt="Cropped preview"/>:<img src={image} alt="Crop preview" style={{objectPosition:`center ${offset}%`,transform:`scale(${zoom})`}}/>}</div><label>Zoom <input type="range" min="1" max="2" step="0.05" value={zoom} onChange={e=>{setZoom(+e.target.value);setPreview('')}}/></label><label>Vertical position <input type="range" min="0" max="100" value={offset} onChange={e=>{setOffset(+e.target.value);setPreview('')}}/></label><div className="actions"><Button loading={busy} onClick={()=>void generate(true)}>Use this crop</Button><Button secondary onClick={async()=>{try{download(await cropImage(await imageData(image),zoom,offset,format==='Story'?9/16:4/5),'vibecheck-crop.jpg')}catch{notify('Could not export the crop.')}}}><Download size={17}/>Download</Button></div></Modal>}
+import {imageData, cropImage, download} from '../lib/images';
+import {exampleAnalysis, uid} from '../lib/storage';
+import type {Analysis, CompareResult, SavedLook} from '../../shared/types';
 
+export default function Story() {
+  const [query] = useSearchParams();
+  const location = useLocation();
+  const nav = useNavigate();
+  const {state, update, notify} = useStore();
+  const style = state.profile.style || 'soft';
 
+  const saved = (location.state as {saved?: SavedLook})?.saved;
+  const prefillImage = (location.state as {prefillImage?: string})?.prefillImage;
 
+  const defaultPhoto =
+    style === 'sharp' ? '/assets/male-portrait.png' : '/assets/female-portrait.png';
+
+  const [compare, setCompare] = useState(query.has('compare'));
+  const [image, setImage] = useState(saved?.image || prefillImage || defaultPhoto);
+  const [imageB, setImageB] = useState('');
+  const [refs, setRefs] = useState<string[]>([]);
+  const [format, setFormat] = useState<'Story' | 'Post'>('Story');
+  const [mood, setMood] = useState(state.profile.mood || 'Effortless');
+  const [result, setResult] = useState<Analysis | null>(saved?.analysis || exampleAnalysis);
+  const [comparison, setComparison] = useState<CompareResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [crop, setCrop] = useState(false);
+  const [captions, setCaptions] = useState(false);
+  const [moodMenuOpen, setMoodMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (query.has('compare')) {
+      setCompare(true);
+      if (!imageB) {
+        // Sample crop for photo B comparison
+        void cropImage(image, 1.15, 45, 4 / 5)
+          .then(cropped => {
+            setImageB(cropped);
+            setComparison({
+              winner: 'b',
+              summary: 'A closer frame puts the focus on you.',
+              styleMatch: 89,
+              a: {
+                ...exampleAnalysis,
+                score: 84,
+                metrics: [
+                  {label: 'Warmth', score: 72, detail: 'Original lighting'},
+                  {label: 'Framing', score: 68, detail: 'Wider field'}
+                ]
+              },
+              b: {
+                ...exampleAnalysis,
+                score: 92,
+                metrics: [
+                  {label: 'Warmth', score: 94, detail: 'Warmer highlights'},
+                  {label: 'Framing', score: 93, detail: 'Balanced subject frame'}
+                ]
+              },
+              source: 'example'
+            });
+          })
+          .catch(() => {});
+      }
+    }
+  }, [query, image, imageB]);
+
+  const changeImage = (src: string) => {
+    setImage(src);
+    setResult(null);
+    setComparison(null);
+    setError('');
+  };
+
+  const runAnalysis = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const referenceImages = await Promise.all(refs.map(imageData));
+      if (compare) {
+        if (!imageB) {
+          setError('Please select or crop a second photo for comparison.');
+          setBusy(false);
+          return;
+        }
+        const res = await api.compare({
+          imageA: await imageData(image),
+          imageB: await imageData(imageB),
+          mood,
+          referenceImages
+        });
+        setComparison(res);
+      } else {
+        const res = await api.analyze({
+          kind: 'story',
+          image: await imageData(image),
+          mood,
+          format: format.toLowerCase() as 'story' | 'post',
+          referenceImages
+        });
+        setResult(res);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveCheck = (photoToSave = image, analysisToSave = result) => {
+    if (!analysisToSave) return;
+    update(s => ({
+      ...s,
+      saved: [
+        {
+          id: uid(),
+          kind: 'story',
+          title: analysisToSave.verdict,
+          image: photoToSave,
+          analysis: analysisToSave,
+          createdAt: Date.now()
+        },
+        ...s.saved
+      ]
+    }));
+    notify('Saved to your looks.');
+  };
+
+  // 3 sample style match images from configured photography assets
+  const styleMatchThumbs =
+    style === 'sharp'
+      ? ['/assets/male-portrait.png', '/assets/male-outfit.png', '/assets/portrait-v2.png']
+      : ['/assets/female-portrait.png', '/assets/female-outfit.png', '/assets/demo-female-portrait.png'];
+
+  return (
+    <div className="story-page-container">
+      {/* Page Heading matching 02-story-result.png & 03-compare.png */}
+      <header className="view-header with-action">
+        <div>
+          <h1>{compare ? 'Same you. Clearer choice.' : 'Your moment. Checked.'}</h1>
+          <p>
+            {compare
+              ? 'Compare the shot, the mood and your style.'
+              : 'A little perspective before you post.'}
+          </p>
+        </div>
+
+        <div className="view-header-actions">
+          <div className="style-switcher" role="group" aria-label="Format selector">
+            <button
+              type="button"
+              className={format === 'Story' ? 'active' : ''}
+              onClick={() => {
+                setFormat('Story');
+                setResult(null);
+              }}
+            >
+              Story
+            </button>
+            <button
+              type="button"
+              className={format === 'Post' ? 'active' : ''}
+              onClick={() => {
+                setFormat('Post');
+                setResult(null);
+              }}
+            >
+              Post
+            </button>
+          </div>
+
+          <PhotoPicker onPick={changeImage}>
+            <span style={{display: 'inline-flex', alignItems: 'center', gap: '6px'}}>
+              <RefreshCw size={15} /> Change photo
+            </span>
+          </PhotoPicker>
+        </div>
+      </header>
+
+      {busy ? (
+        <Busy label={compare ? 'Finding the stronger story…' : 'Checking the light, framing, and feeling…'} />
+      ) : compare ? (
+        /* TWO-PHOTO COMPARE VIEW (03-compare.png) */
+        <div className="story-workbench">
+          {/* Left Column: Equal Side-by-Side Panes & Style Comparison */}
+          <div>
+            <div className="compare-panes-grid">
+              {/* Photo A */}
+              <div className={`compare-pane-card ${comparison?.winner === 'a' ? 'recommended' : ''}`}>
+                <div className="pane-badge-top">
+                  <span className="pane-label-pill">A · Original</span>
+                  {comparison?.winner === 'a' && (
+                    <span className="recommended-pill">
+                      <Check size={13} /> Recommended
+                    </span>
+                  )}
+                </div>
+                <img src={image} alt="Original photo" />
+                <div className="pane-caption">Original photo</div>
+              </div>
+
+              {/* Photo B */}
+              <div className={`compare-pane-card ${comparison?.winner === 'b' ? 'recommended' : ''}`}>
+                <div className="pane-badge-top">
+                  <span className="pane-label-pill">B · Closer crop</span>
+                  {comparison?.winner === 'b' && (
+                    <span className="recommended-pill">
+                      <Check size={13} /> Recommended
+                    </span>
+                  )}
+                </div>
+                {imageB ? (
+                  <img src={imageB} alt="Closer crop" />
+                ) : (
+                  <div style={{aspectRatio: '4 / 5', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F0F4FA'}}>
+                    <PhotoPicker onPick={setImageB}>Add Photo B</PhotoPicker>
+                  </div>
+                )}
+                <div className="pane-caption">Selected crop</div>
+              </div>
+            </div>
+
+            {/* Compare with your style bar */}
+            <div
+              style={{
+                marginTop: '20px',
+                padding: '18px 22px',
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+                borderRadius: 'var(--radius-surface)'
+              }}
+            >
+              <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px'}}>
+                <div>
+                  <h4 style={{fontSize: '15px', fontWeight: 800}}>Compare with your style</h4>
+                  <p style={{fontSize: '12px', color: 'var(--muted)'}}>See how this fits with your recent posts.</p>
+                </div>
+                <div style={{display: 'flex', gap: '6px'}}>
+                  {['Warm tones', 'Relaxed', 'Natural light'].map(t => (
+                    <span
+                      key={t}
+                      style={{
+                        padding: '4px 10px',
+                        background: '#EDF4FE',
+                        color: 'var(--action)',
+                        borderRadius: 'var(--radius-tag)',
+                        fontSize: '11px',
+                        fontWeight: 700
+                      }}
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{display: 'flex', gap: '12px'}}>
+                {styleMatchThumbs.map((s, i) => (
+                  <img
+                    key={i}
+                    src={s}
+                    alt="Reference post"
+                    style={{width: '32%', height: '80px', objectFit: 'cover', borderRadius: '10px'}}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Comparative Evaluation & Actions */}
+          <div>
+            <div
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+                borderRadius: 'var(--radius-surface)',
+                padding: '28px',
+                boxShadow: 'var(--shadow-card)'
+              }}
+            >
+              <h2 style={{fontSize: '32px', fontWeight: 800, letterSpacing: '-0.8px', color: 'var(--ink)'}}>
+                This one’s your vibe.
+              </h2>
+              <p style={{fontSize: '15px', color: 'var(--muted)', marginTop: '4px', marginBottom: '20px'}}>
+                Warmer light. More focus on you.
+              </p>
+
+              {/* Style match metric */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  padding: '16px 20px',
+                  background: '#F0F7FE',
+                  borderRadius: '16px',
+                  marginBottom: '20px'
+                }}
+              >
+                <div>
+                  <div style={{fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)'}}>Style match</div>
+                  <div style={{fontFamily: 'var(--font-barlow)', fontSize: '52px', fontWeight: 800, lineHeight: 0.9, color: 'var(--ink)'}}>
+                    89%
+                  </div>
+                </div>
+                <div style={{fontSize: '13px', color: 'var(--muted)', borderLeft: '1px solid var(--line)', paddingLeft: '16px'}}>
+                  Matches your recent posts
+                </div>
+              </div>
+
+              {/* Metric comparative rows */}
+              <div style={{display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px'}}>
+                <div style={{display: 'grid', gridTemplateColumns: '70px 1fr 30px', alignItems: 'center', gap: '10px', fontSize: '13px'}}>
+                  <span style={{fontWeight: 700}}>Warmth</span>
+                  <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <small style={{width: '12px'}}>A</small>
+                      <div className="metric-bar-track" style={{flex: 1}}>
+                        <div className="metric-bar-fill" style={{width: '72%', opacity: 0.6}} />
+                      </div>
+                      <small>72</small>
+                    </div>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <small style={{width: '12px'}}>B</small>
+                      <div className="metric-bar-track" style={{flex: 1}}>
+                        <div className="metric-bar-fill" style={{width: '94%'}} />
+                      </div>
+                      <small>94</small>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{display: 'grid', gridTemplateColumns: '70px 1fr 30px', alignItems: 'center', gap: '10px', fontSize: '13px'}}>
+                  <span style={{fontWeight: 700}}>Framing</span>
+                  <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <small style={{width: '12px'}}>A</small>
+                      <div className="metric-bar-track" style={{flex: 1}}>
+                        <div className="metric-bar-fill" style={{width: '68%', opacity: 0.6}} />
+                      </div>
+                      <small>68</small>
+                    </div>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <small style={{width: '12px'}}>B</small>
+                      <div className="metric-bar-track" style={{flex: 1}}>
+                        <div className="metric-bar-fill" style={{width: '93%'}} />
+                      </div>
+                      <small>93</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tweak Tip */}
+              <div className="tweak-card" style={{marginBottom: '24px'}}>
+                <Sparkles size={20} />
+                <div>
+                  <div className="tweak-title">Framing insight</div>
+                  <div className="tweak-desc">The tighter crop keeps attention on you.</div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                <Button
+                  className="block"
+                  onClick={() => {
+                    saveCheck(imageB || image, comparison?.b || result);
+                    notify('Photo choice confirmed and saved.');
+                  }}
+                >
+                  Use photo B →
+                </Button>
+
+                <Button
+                  secondary
+                  className="block"
+                  onClick={() => {
+                    setCompare(false);
+                  }}
+                >
+                  Back to single check
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* SINGLE PHOTO RESULT WORKBENCH (02-story-result.png) */
+        <div className="story-workbench">
+          {/* Left Column: Photo Frame & Metadata Bar */}
+          <div>
+            <div className="story-photo-frame">
+              <img src={image} alt="Story photo check" />
+
+              <EncouragementBadge
+                style={style}
+                text={style === 'sharp' ? 'OWN THE MOMENT.' : 'This is your moment. ♡'}
+              />
+            </div>
+
+            {/* Photo Metadata Bar */}
+            <div className="photo-meta-bar">
+              <div className="photo-meta-info">
+                <FileText size={16} />
+                <span className="photo-meta-filename">golden-hour.jpg</span>
+                <span>1.8 MB · 1440 × 1799</span>
+              </div>
+
+              <div style={{display: 'flex', alignItems: 'center', gap: '8px', position: 'relative'}}>
+                <span style={{fontSize: '12px', color: 'var(--muted)'}}>Mood</span>
+                <span className="photo-meta-tag">{mood}</span>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  style={{minHeight: '32px', padding: '4px 12px', fontSize: '11px'}}
+                  onClick={() => setMoodMenuOpen(!moodMenuOpen)}
+                >
+                  Change mood ▾
+                </button>
+
+                {moodMenuOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      bottom: '100%',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--line)',
+                      borderRadius: '12px',
+                      padding: '8px',
+                      boxShadow: 'var(--shadow-overlay)',
+                      zIndex: 10,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px'
+                    }}
+                  >
+                    {['Effortless', 'Playful', 'Bold', 'Romantic', 'Professional'].map(m => (
+                      <button
+                        type="button"
+                        key={m}
+                        style={{
+                          textAlign: 'left',
+                          padding: '6px 14px',
+                          fontSize: '12px',
+                          borderRadius: '6px',
+                          background: mood === m ? 'var(--selected-fill)' : 'none',
+                          color: mood === m ? 'var(--action)' : 'var(--ink)'
+                        }}
+                        onClick={() => {
+                          setMood(m);
+                          setMoodMenuOpen(false);
+                        }}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Notched Score Ticket & Actions & Style Match */}
+          <div>
+            {result ? (
+              <>
+                <ScoreTicket
+                  analysis={result}
+                  onTweakAction={() => setCrop(true)}
+                />
+
+                {/* Main Actions */}
+                <div style={{display: 'flex', gap: '12px', marginTop: '16px'}}>
+                  <Button
+                    style={{flex: 1}}
+                    onClick={() => setCrop(true)}
+                  >
+                    <Crop size={16} /> Try this crop →
+                  </Button>
+                </div>
+
+                <div style={{display: 'flex', gap: '12px', marginTop: '10px'}}>
+                  <Button
+                    secondary
+                    style={{flex: 1}}
+                    onClick={() => setCompare(true)}
+                  >
+                    <Images size={16} /> Compare photos
+                  </Button>
+
+                  <Button
+                    secondary
+                    style={{flex: 1}}
+                    onClick={() => setCaptions(true)}
+                  >
+                    <Sparkles size={16} /> Finishing touches
+                  </Button>
+                </div>
+
+                {/* Style Match Card */}
+                <div className="style-match-card">
+                  <div>
+                    <div style={{fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)'}}>
+                      Your style match
+                    </div>
+                    <div className="style-match-score">89%</div>
+                    <div className="style-match-meta">Matches your recent posts</div>
+                  </div>
+
+                  <div className="style-match-thumbs">
+                    {styleMatchThumbs.map((s, i) => (
+                      <img key={i} src={s} alt="Reference sample" />
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{marginTop: '14px', textAlign: 'right'}}>
+                  <button
+                    type="button"
+                    style={{fontSize: '13px', fontWeight: 700, color: 'var(--action)', display: 'inline-flex', alignItems: 'center', gap: '6px'}}
+                    onClick={() => saveCheck()}
+                  >
+                    <Bookmark size={15} /> Save this check to your space
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div
+                style={{
+                  padding: '32px',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--line)',
+                  borderRadius: 'var(--radius-surface)'
+                }}
+              >
+                <h2 style={{fontSize: '24px', fontWeight: 800}}>Ready to check?</h2>
+                <p style={{fontSize: '14px', color: 'var(--muted)', margin: '8px 0 20px'}}>
+                  We'll evaluate composition, light, and how it aligns with your {mood.toLowerCase()} vibe.
+                </p>
+                <Button className="block" onClick={() => void runAnalysis()}>
+                  Check this photo <ArrowRight size={17} />
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {error && <ErrorPanel error={error} onRetry={() => void runAnalysis()} />}
+
+      {/* Crop Modal (S07) */}
+      {crop && (
+        <CropDialog
+          image={image}
+          format={format}
+          onClose={() => setCrop(false)}
+          onUse={src => {
+            changeImage(src);
+            setCrop(false);
+            notify('Crop applied. Run a fresh check when you’re ready.');
+          }}
+        />
+      )}
+
+      {/* Finishing Touches / Captions Modal (S08) */}
+      {captions && (
+        <Modal title="Finishing touches" onClose={() => setCaptions(false)}>
+          <p style={{fontSize: '13px', color: 'var(--muted)', marginBottom: '16px'}}>
+            A starting point. Give it your own voice.
+          </p>
+          <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+            {(result?.captions || ['Golden hour, good company.', 'A little less rush.', 'Right here, right now.']).map(
+              (c, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '14px 18px',
+                    background: '#F5F8FC',
+                    borderRadius: '12px',
+                    fontSize: '14px'
+                  }}
+                >
+                  <span>{c}</span>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label={`Copy caption ${i + 1}`}
+                    onClick={() => {
+                      void navigator.clipboard.writeText(c);
+                      notify('Caption copied to clipboard.');
+                    }}
+                  >
+                    <Copy size={16} />
+                  </button>
+                </div>
+              )
+            )}
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function CropDialog({
+  image,
+  format,
+  onClose,
+  onUse
+}: {
+  image: string;
+  format: string;
+  onClose: () => void;
+  onUse: (s: string) => void;
+}) {
+  const [zoom, setZoom] = useState(1.15);
+  const [offset, setOffset] = useState(45);
+  const [preview, setPreview] = useState('');
+  const [busy, setBusy] = useState(false);
+  const {notify} = useStore();
+
+  const generate = async (use: boolean) => {
+    setBusy(true);
+    try {
+      const data = await cropImage(await imageData(image), zoom, offset, format === 'Story' ? 9 / 16 : 4 / 5);
+      setPreview(data);
+      if (use) onUse(data);
+    } catch {
+      notify('Could not crop that image. Try another photo.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal title="Find your frame" onClose={onClose}>
+      <div
+        style={{
+          width: 'min(280px, 100%)',
+          margin: '0 auto 20px',
+          overflow: 'hidden',
+          borderRadius: '14px',
+          aspectRatio: format === 'Story' ? '9 / 16' : '4 / 5',
+          background: '#EAF0FA'
+        }}
+      >
+        <img
+          src={preview || image}
+          alt="Crop preview"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: `center ${offset}%`,
+            transform: preview ? 'none' : `scale(${zoom})`
+          }}
+        />
+      </div>
+
+      <div style={{display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px'}}>
+        <label style={{fontSize: '13px', fontWeight: 700}}>
+          Zoom: {zoom.toFixed(2)}x
+          <input
+            type="range"
+            min="1"
+            max="2"
+            step="0.05"
+            value={zoom}
+            onChange={e => {
+              setZoom(+e.target.value);
+              setPreview('');
+            }}
+          />
+        </label>
+
+        <label style={{fontSize: '13px', fontWeight: 700}}>
+          Vertical framing: {offset}%
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={offset}
+            onChange={e => {
+              setOffset(+e.target.value);
+              setPreview('');
+            }}
+          />
+        </label>
+      </div>
+
+      <div style={{display: 'flex', gap: '12px'}}>
+        <Button loading={busy} style={{flex: 1}} onClick={() => void generate(true)}>
+          Use this crop
+        </Button>
+        <Button
+          secondary
+          onClick={async () => {
+            try {
+              download(
+                await cropImage(await imageData(image), zoom, offset, format === 'Story' ? 9 / 16 : 4 / 5),
+                'vibecheck-crop.jpg'
+              );
+            } catch {
+              notify('Could not export the crop.');
+            }
+          }}
+        >
+          <Download size={16} /> Download
+        </Button>
+      </div>
+    </Modal>
+  );
+}

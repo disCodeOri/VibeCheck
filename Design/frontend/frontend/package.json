@@ -1,0 +1,28 @@
+{
+  "name": "@vibecheck/frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vibe Check Design System, UI Components, Tokens, and Screen Templates for React Native & Expo",
+  "main": "design/index.ts",
+  "types": "design/index.ts",
+  "exports": {
+    ".": "./design/index.ts",
+    "./tokens": "./design/tokens/index.ts",
+    "./components": "./design/components/index.ts",
+    "./icons": "./design/icons/index.ts",
+    "./screens": "./design/screens/index.ts",
+    "./fonts": "./design/fonts/font-loader.ts"
+  },
+  "dependencies": {
+    "@expo-google-fonts/anton": "^0.4.0",
+    "@expo-google-fonts/dm-sans": "^0.4.0",
+    "@expo-google-fonts/instrument-serif": "^0.4.1",
+    "@expo/vector-icons": "^15.0.2",
+    "expo-font": "~57.0.4",
+    "expo-router": "~57.0.22",
+    "react": "19.2.8",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-svg": "15.15.4"
+  }
+}

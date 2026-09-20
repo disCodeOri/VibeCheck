@@ -33,7 +33,13 @@ export async function executeJob(job:WorkerJob,deps=cloud,service=ai){
 
 async function runWorker(job:WorkerJob){
   if(!await claimJob(job,cloud))return;
-  try {await finishJob(job,await executeJob(job),cloud);} catch {await failJob(job,cloud);}
+  try {await finishJob(job,await executeJob(job),cloud);}
+  catch(error){
+    // Log server-side (the client is still told nothing beyond AI_ERROR) so a
+    // failing job is diagnosable instead of a silent dead end in CloudWatch.
+    console.error(`[worker] job ${job.id} (${job.path}) failed:`,(error as Error)?.message??error);
+    await failJob(job,cloud);
+  }
 }
 
 function isHttp(event:unknown):event is APIGatewayProxyEventV2{return !!event&&typeof event==='object'&&(event as {version?:string}).version==='2.0'&&'requestContext' in event;}

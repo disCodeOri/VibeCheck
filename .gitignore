@@ -10,3 +10,9 @@ test-results/
 playwright-report/
 *.log
 .qa/
+
+# Playwright
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
