@@ -150,13 +150,20 @@ export function createApp(ai: AiService, options: AppOptions = {}) {
     let normalized = error;
     if (error instanceof ZodError || error instanceof SyntaxError) normalized = new HttpError(400, 'INVALID_REQUEST', 'The request payload is invalid.');
     if (normalized instanceof HttpError) return res.status(normalized.status).json({ error: { code: normalized.code, message: normalized.message, ...(normalized.retryAfter ? { retryAfter: normalized.retryAfter } : {}) } });
-    const provider = normalized as { code?: string; status?: number };
+    const provider = normalized as { code?: string; status?: number; message?: string };
     if (provider.code === 'INVALID_REQUEST' && provider.status === 400) return res.status(400).json({error:{code:'INVALID_REQUEST',message:'This preview needs a supported garment reference image.'}});
     if (provider.code === 'INVALID_API_KEY' || provider.status === 401 || provider.status === 403) return res.status(503).json({ error: { code: 'AI_UNAVAILABLE', message: 'AI service is not configured or authorized.' } });
-    if (provider.status === 429) return res.status(429).json({ error: { code: 'AI_QUOTA', message: 'AI quota is temporarily exhausted.', retryAfter: 30 } });
+    if (provider.status === 429) {
+      const isQuotaZero = provider.message?.includes('limit: 0') || provider.message?.includes('free_tier') || provider.message?.includes('Google AI Studio billing');
+      const message = isQuotaZero
+        ? (provider.message ?? 'AI image generation requires Google AI Studio billing or an account with image quota.')
+        : (provider.message ?? 'AI quota is temporarily exhausted.');
+      return res.status(429).json({ error: { code: 'AI_QUOTA', message, retryAfter: 30 } });
+    }
     if (provider.code === 'UNSUPPORTED_GENERATION') return res.status(501).json({ error: { code: 'UNSUPPORTED_GENERATION', message: 'Image generation is not supported by the configured model.' } });
     return res.status(502).json({ error: { code: 'AI_ERROR', message: 'The AI provider could not complete the request.' } });
   });
+
   return app;
 }
 
