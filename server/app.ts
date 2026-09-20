@@ -138,6 +138,42 @@ export function createApp(ai: AiService, options: AppOptions = {}) {
     res.json(await ai.generatePreview({ ...body, image: await normalizeImage(body.image), garmentImages: await images(body.garmentImages) }));
   }));
 
+  // OpenCV Face Detection, Alignment, and Seamless Skin Blending
+  app.post('/api/face/align', asyncRoute(async (req, res) => {
+    const { image, isMale } = req.body || {};
+    if (!image || typeof image !== 'string') {
+      throw new HttpError(400, 'INVALID_REQUEST', 'Missing image data');
+    }
+
+    const pyPath = '/home/ayush/.local/state/quickshell/.venv/bin/python3';
+    const scriptPath = path.resolve(process.cwd(), 'scripts/align_face.py');
+
+    const { spawn } = await import('node:child_process');
+    const proc = spawn(pyPath, [scriptPath]);
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (d) => { stdout += d.toString(); });
+    proc.stderr.on('data', (d) => { stderr += d.toString(); });
+
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        console.error('OpenCV align_face error:', stderr);
+        return res.status(500).json({ error: 'Face alignment failed', detail: stderr });
+      }
+      try {
+        const parsed = JSON.parse(stdout);
+        res.json(parsed);
+      } catch (err) {
+        res.status(500).json({ error: 'Failed to parse face alignment output' });
+      }
+    });
+
+    proc.stdin.write(JSON.stringify({ image, isMale: !!isMale }));
+    proc.stdin.end();
+  }));
+
   if (process.env.NODE_ENV === 'production') {
     const dist = path.resolve(process.cwd(), 'dist');
     if (existsSync(dist)) {

@@ -27,6 +27,7 @@ export default function Home(){
     <div className="feature-shortcuts">
       <Link to="/loox"><div className="shortcut-photo"><img src="/assets/portrait-v2.png" alt=""/></div><div><h3>loox</h3><p>New look.<br/>Same good energy.</p></div><ArrowUpRight size={16}/></Link>
       <Link to="/chicfit"><div className="shortcut-photo garment-shortcut"/><div><h3>ChicFit</h3><p>Your wardrobe.<br/>More possibilities.</p></div><ArrowUpRight size={16}/></Link>
+      <Link to="/fit3d" style={{background:'#edf4ff',borderColor:'#c5dcfc',gridColumn:'span 2'}}><div className="shortcut-photo" style={{background:'linear-gradient(135deg,#d2e5ff,#82afff)'}}/><div><span className="micro" style={{color:'#1853d9'}}>NEW 3D FEATURE</span><h3 style={{marginTop:'4px'}}>3D Fit Check & Texture Swap</h3><p>Real-time 3D humanoid model with AI garment texture generation and 360° fit preview.</p></div><ArrowUpRight size={16}/></Link>
     </div>
     <Link className="home-example" to={`${url}?demo=1`}>Explore a sample {mode==='Story'?'check':mode==='loox'?'look':'wardrobe'} <ArrowUpRight size={13}/></Link>
   </div>;
