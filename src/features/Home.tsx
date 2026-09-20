@@ -1,6 +1,33 @@
 import {useState} from 'react';
 import {Link,useNavigate} from 'react-router-dom';
-import {ArrowRight,ScanFace,Shirt,ArrowUpRight,Images,Sparkles,Plus} from 'lucide-react';
-import {useStore} from '../lib/context';
+import {ArrowRight,ArrowUpRight,Images} from 'lucide-react';
 import {Button} from '../components/ui';
-export default function Home(){const [mode,setMode]=useState('Story');const nav=useNavigate();const {state}=useStore();const url=mode==='Story'?'/story':mode==='loox'?'/loox':'/chicfit';return <div className="home"><div className="home-intro"><p className="greeting">{state.profile.name?`Hey ${state.profile.name}, make it your day.`:'A fresh perspective, whenever you need it.'}</p><h1>Good taste. <br/>All you<span>.</span></h1><p className="home-subtitle">Look good. Feel right. Be you.</p></div><div className="home-grid"><section className="hero-visual"><div className="hero-tabs">{['Story','loox','ChicFit'].map(m=><button key={m} className={mode===m?'selected':''} onClick={()=>setMode(m)}>{m}</button>)}</div><div className="hero-stage"><div className="hero-type" aria-hidden="true">YOUR<br/>VIBE</div><img className="hero-person" src="/assets/portrait.png" alt="Sample look: cream linen shirt and olive trousers"/><div className="hero-sticker">LOOKING<br/>SHARP.</div><span className="sample-label">SAMPLE LOOK</span><div className="hero-bottom"><span>{mode==='Story'?'YOUR NEXT POST, WITH CONFIDENCE.':mode==='loox'?'SAME YOU. FRESH PERSPECTIVE.':'GOOD PIECES. BETTER TOGETHER.'}</span><ArrowUpRight size={24}/></div></div></section><section className="home-actions"><div className="start-check"><div className="feature-mark"><Sparkles size={22}/></div><h2>{mode==='Story'?'Before you hit post.':mode==='loox'?'Find your next look.':'Style what you own.'}</h2><p>{mode==='Story'?'A second opinion on the light, the framing, and the feeling. Keep what makes it you.':mode==='loox'?'Get a fresh take on your hair and grooming, with thoughtful suggestions you can actually use.':'Build a wardrobe that works together. Try new combinations on your own 3D preview.'}</p><Button onClick={()=>nav(url)}>{mode==='Story'?'Check my story':mode==='loox'?'Explore my look':'Open my wardrobe'}<ArrowRight size={19}/></Button><Button secondary onClick={()=>nav(mode==='Story'?'/story?compare=1':`${url}?demo=1`)}>{mode==='Story'?<><Images size={18}/>Compare two photos</>:<>Explore an example <ArrowRight size={18}/></>}</Button>{mode==='Story'&&<Link className="subtle-link" to="/story?demo=1">Just looking? Explore an example <ArrowUpRight size={14}/></Link>}<p className="local-note">Your photos. Your choice. You decide what to check.</p></div><div className="feature-shortcuts"><Link to="/loox"><div className="shortcut-photo"><img src="/assets/portrait-close.png" alt=""/></div><div><ScanFace size={20}/><h3>loox</h3><p>New look.<br/>Same good energy.</p></div><ArrowUpRight size={18}/></Link><Link to="/chicfit"><div className="shortcut-photo garment-shortcut"/><div><Shirt size={20}/><h3>ChicFit</h3><p>Your wardrobe.<br/>More possibilities.</p></div><ArrowUpRight size={18}/></Link></div></section></div><div className="home-lower"><div><span className="micro">A LITTLE NUDGE</span><h2>You already have the style.<br/><span>Let’s bring it into focus.</span></h2></div><Link to={state.saved.length?'/saved':'/chicfit'} className="wardrobe-nudge"><div className="nudge-icon">{state.saved.length?<Images/>:<Plus/>}</div><div><strong>{state.saved.length?`${state.saved.length} looks, all yours.`:'Start with what you own.'}</strong><p>{state.saved.length?'Your favourites, ready when you are.':'A few pieces. A whole lot of possibilities.'}</p></div><ArrowRight size={20}/></Link></div></div>}
+
+export default function Home(){
+  const [mode,setMode]=useState('Story');
+  const nav=useNavigate();
+  const url=mode==='Story'?'/story':mode==='loox'?'/loox':'/chicfit';
+  return <div className="home">
+    <div className="home-intro">
+      <h1>Good taste.<br/>All you<span>.</span></h1>
+      <p className="home-subtitle">Look good. Feel right. Be you.</p>
+    </div>
+    <div className="hero-tabs" role="group" aria-label="Choose a style check">
+      {['Story','loox','ChicFit'].map(m=><button key={m} aria-pressed={mode===m} className={mode===m?'selected':''} onClick={()=>setMode(m)}>{m}</button>)}
+    </div>
+    <section className="hero-visual" aria-label="Your vibe, your way">
+      <img className="reference-hero" src="/assets/hero-v2.png" alt="A man in a cream linen shirt, with bold Your Vibe lettering behind him"/>
+      <div className="hero-sticker">LOOKING<br/>SHARP.</div>
+      <span className="sample-label">SAMPLE LOOK</span>
+    </section>
+    <section className="home-actions">
+      <Button onClick={()=>nav(url)}>{mode==='Story'?'Check my story':mode==='loox'?'Explore my look':'Open my wardrobe'}<ArrowRight size={17}/></Button>
+      <Button secondary onClick={()=>nav(mode==='Story'?'/story?compare=1':`${url}?demo=1`)}>{mode==='Story'?<><Images size={16}/>Compare two photos</>:<>Explore an example <ArrowRight size={16}/></>}</Button>
+    </section>
+    <div className="feature-shortcuts">
+      <Link to="/loox"><div className="shortcut-photo"><img src="/assets/portrait-v2.png" alt=""/></div><div><h3>loox</h3><p>New look.<br/>Same good energy.</p></div><ArrowUpRight size={16}/></Link>
+      <Link to="/chicfit"><div className="shortcut-photo garment-shortcut"/><div><h3>ChicFit</h3><p>Your wardrobe.<br/>More possibilities.</p></div><ArrowUpRight size={16}/></Link>
+    </div>
+    <Link className="home-example" to={`${url}?demo=1`}>Explore a sample {mode==='Story'?'check':mode==='loox'?'look':'wardrobe'} <ArrowUpRight size={13}/></Link>
+  </div>;
+}

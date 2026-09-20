@@ -12,6 +12,6 @@ const imageModel = provider==='bedrock'?process.env.BEDROCK_IMAGE_MODEL??'amazon
 const service = provider==='bedrock'?new BedrockService({region:process.env.AWS_REGION||'us-east-1',model,imageModel,useRekognition:process.env.USE_REKOGNITION==='true'}):new GeminiService(apiKey, model, imageModel);
 const port = Number(process.env.PORT ?? 8787);
 
-createApp(service, { configured: provider==='bedrock'||Boolean(apiKey), provider, model, imageModel }).listen(port, '127.0.0.1', () => {
+createApp(service, { configured: provider==='bedrock'||Boolean(apiKey), provider, model, imageModel, generationEnabled:process.env.ENABLE_IMAGE_GENERATION==='true' }).listen(port, '127.0.0.1', () => {
   console.log(`VibeCheck API listening on http://127.0.0.1:${port}`);
 });

@@ -13,6 +13,10 @@ Parameters:
     Type: Number
     Default: 10
     MinValue: 1
+  BudgetEmail:
+    Type: String
+    Description: Email address for 50% and 100% budget alerts
+    AllowedPattern: '.+@.+\..+'
 
 Globals:
   Function:
@@ -215,6 +219,12 @@ Resources:
         BudgetLimit: {Amount: !Ref MonthlyBudgetUsd, Unit: USD}
         BudgetType: COST
         TimeUnit: MONTHLY
+        CostTypes: {IncludeCredit: false, IncludeRefund: false}
+      NotificationsWithSubscribers:
+        - Notification: {NotificationType: ACTUAL, ComparisonOperator: GREATER_THAN, Threshold: 50, ThresholdType: PERCENTAGE}
+          Subscribers: [{SubscriptionType: EMAIL, Address: !Ref BudgetEmail}]
+        - Notification: {NotificationType: ACTUAL, ComparisonOperator: GREATER_THAN, Threshold: 100, ThresholdType: PERCENTAGE}
+          Subscribers: [{SubscriptionType: EMAIL, Address: !Ref BudgetEmail}]
 
 Outputs:
   DistributionUrl: {Value: !Sub 'https://${Distribution.DomainName}'}
@@ -222,3 +232,5 @@ Outputs:
   UserPoolId: {Value: !Ref UserPool}
   UserPoolClientId: {Value: !Ref UserPoolClient}
   FrontendBucketName: {Value: !Ref FrontendBucket}
+  DataBucketName: {Value: !Ref DataBucket}
+  DistributionId: {Value: !Ref Distribution}

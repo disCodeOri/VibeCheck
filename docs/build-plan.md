@@ -1,5 +1,7 @@
 # vibecheck. implementation plan
 
+Update: the user subsequently selected AWS for the hackathon. The primary deployment now uses Bedrock, Nova Canvas, Rekognition, Cognito, S3, DynamoDB, Lambda, API Gateway and CloudFront. See aws-setup.md for current architecture and setup. The original local-first plan below records the initial implementation; its no-cloud boundary is superseded.
+
 Goal: a complete locally runnable, installable mobile-first app implementing the approved male visual direction and all three product areas.
 
 Authority: Design/integrated-male-v1 boards and the user's original feature requirements. User explicitly approved mobile-first web and Google AI Studio, and asked to proceed.

@@ -1,0 +1,15 @@
+export const DEMO_DURATION=178;
+export const chapters=[
+ {id:'intro',start:0,end:12,kicker:'MEET VIBECHECK',title:'Less second-guessing.\nMore you.',copy:'For the photo you want to post. The look you want to try. The clothes you already own.',caption:'vibecheck brings story feedback, personal style and your wardrobe into one calm space.'},
+ {id:'home',start:12,end:28,kicker:'01 / FIND YOUR VIBE',title:'One space.\nAll you.',copy:'A familiar home. Three ways to find your next good look.',caption:'Start with a photo. Choose Story, loox or ChicFit. The next step is always within reach.'},
+ {id:'story',start:28,end:56,kicker:'02 / THE VIBE RECEIPT',title:'A little\nperspective.',copy:'A clear verdict. A useful reason. One small thing to try.',caption:'A ticket turns style feedback into a clear next step. These scores are illustrative sample results.'},
+ {id:'compare',start:56,end:78,kicker:'03 / MAKE THE CHOICE',title:'Same you.\nClearer choice.',copy:'Compare the details that matter, side by side.',caption:'The closer crop keeps the focus on you. Paired bars explain the choice instead of hiding it behind a score.'},
+ {id:'loox',start:78,end:104,kicker:'04 / SMALL DETAILS',title:'Your look.\nYour energy.',copy:'Feedback goes exactly where it belongs. Tap a detail to explore it.',caption:'Pointers connect each suggestion to the photo. Hairstyle inspiration keeps the choice in your hands.'},
+ {id:'wardrobe',start:104,end:122,kicker:'05 / START WITH WHAT YOU OWN',title:'More looks.\nSame wardrobe.',copy:'Bring your favourite pieces together. Make a little go further.',caption:'Your own wardrobe becomes the starting point. Pick a few pieces and build an outfit for the occasion.'},
+ {id:'outfit',start:122,end:142,kicker:'06 / SEE IT TOGETHER',title:'Same pieces.\nNew energy.',copy:'Explore combinations with a working, adjustable 3D prototype.',caption:'The rotatable avatar is a local prototype. Accurate personal scans and fitted 3D clothing are future work.'},
+ {id:'expression',start:142,end:156,kicker:'07 / ROOM FOR YOUR EXPRESSION',title:'A different feel.\nStill vibecheck.',copy:'Bold layered plates or softer shapes. One coherent design language.',caption:'The second direction keeps the same familiar structure, with softer imagery and a different styling mood.'},
+ {id:'privacy',start:156,end:170,kicker:'08 / BUILT WITH AWS OPEN SOURCE',title:'Your photos.\nYour rules.',copy:'Cedar evaluates permission locally before a photo reaches the AI provider.',caption:'This is a live Cedar policy evaluation. Pausing processing blocks new AI checks. No AWS account is needed.'},
+ {id:'outro',start:170,end:178,kicker:'LOOK GOOD. FEEL RIGHT. BE YOU.',title:'Good taste.\nAll you.',copy:'A little clarity. A lot of possibility.',caption:'vibecheck. Built for self-expression. Designed to make the next step feel easy.'},
+] as const;
+export function chapterAt(time:number){return chapters.find(c=>time>=c.start&&time<c.end)??chapters[chapters.length-1]}
+export function clampTime(time:number){return Math.max(0,Math.min(DEMO_DURATION,Number.isFinite(time)?time:0))}

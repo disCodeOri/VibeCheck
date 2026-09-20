@@ -1,0 +1,161 @@
+[
+  {
+    "name": "Story Check — photo to export",
+    "ids": [
+      "H01",
+      "S01",
+      "S02",
+      "S03",
+      "S04",
+      "S05",
+      "S06",
+      "S07",
+      "S02",
+      "S04",
+      "S05",
+      "S06",
+      "S08",
+      "S12",
+      "S13",
+      "V03"
+    ]
+  },
+  {
+    "name": "Story Check — compare",
+    "ids": [
+      "H01",
+      "S09",
+      "S10",
+      "S11",
+      "S12",
+      "S13"
+    ]
+  },
+  {
+    "name": "loox — portrait to saved hairstyle",
+    "ids": [
+      "H01",
+      "L01",
+      "L02",
+      "L03",
+      "L04",
+      "L05",
+      "L06",
+      "L07",
+      "L08",
+      "V03"
+    ]
+  },
+  {
+    "name": "Wardrobe — add, edit, remove",
+    "ids": [
+      "W01",
+      "W03",
+      "W04",
+      "W02",
+      "W05",
+      "W04",
+      "W02",
+      "W05",
+      "W06",
+      "W02"
+    ]
+  },
+  {
+    "name": "Personal model — intended generation",
+    "ids": [
+      "M01",
+      "M02",
+      "M03",
+      "M04",
+      "M05",
+      "M06",
+      "M07",
+      "C01"
+    ]
+  },
+  {
+    "name": "Model unavailable — supported fallback",
+    "ids": [
+      "M01",
+      "M08",
+      "M04",
+      "M07",
+      "C01"
+    ]
+  },
+  {
+    "name": "ChicFit — owned pieces to saved outfit",
+    "ids": [
+      "C01",
+      "C02",
+      "C03",
+      "C04",
+      "C05",
+      "C04",
+      "C06",
+      "C07",
+      "C08",
+      "C09",
+      "V03"
+    ]
+  },
+  {
+    "name": "Saved — reopen and delete",
+    "ids": [
+      "V02",
+      "V03",
+      "V04",
+      "V02"
+    ]
+  },
+  {
+    "name": "Account — create and verify",
+    "ids": [
+      "A01",
+      "A02",
+      "A03",
+      "A01"
+    ]
+  },
+  {
+    "name": "Account — password recovery",
+    "ids": [
+      "A01",
+      "A04",
+      "A05",
+      "A01"
+    ]
+  },
+  {
+    "name": "Data — backup and restore",
+    "ids": [
+      "P01",
+      "P04",
+      "P08",
+      "P04",
+      "P05",
+      "P01"
+    ]
+  },
+  {
+    "name": "Data — scoped deletion",
+    "ids": [
+      "P01",
+      "P03",
+      "P07",
+      "P03"
+    ]
+  },
+  {
+    "name": "Recovery — preserve draft and retry",
+    "ids": [
+      "S04",
+      "S05",
+      "X01",
+      "S04",
+      "S05",
+      "S06"
+    ]
+  }
+]

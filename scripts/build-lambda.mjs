@@ -9,7 +9,7 @@ if(path.relative(root,out)!==path.join('build','lambda'))throw new Error('Unexpe
 const pkg=JSON.parse(await readFile(path.join(root,'package.json'),'utf8'));
 await rm(out,{recursive:true,force:true});
 await mkdir(out,{recursive:true});
-await build({entryPoints:[path.join(root,'server','lambda.ts')],outfile:path.join(out,'lambda.js'),bundle:true,platform:'node',target:'node22',format:'cjs',sourcemap:true,external:['sharp'],logLevel:'info'});
+await build({entryPoints:[path.join(root,'server','lambda.ts')],outfile:path.join(out,'lambda.js'),bundle:true,platform:'node',target:'node22',format:'cjs',sourcemap:true,external:['sharp','@cedar-policy/cedar-wasm'],logLevel:'info'});
 await writeFile(path.join(out,'package.json'),JSON.stringify({type:'commonjs',private:true}));
 
 const npmCli=process.env.npm_execpath;
@@ -18,7 +18,7 @@ async function install(packages,extra=[]){await new Promise((resolve,reject)=>{
   const child=spawn(process.execPath,[npmCli,'install','--omit=dev','--no-package-lock','--os=linux','--cpu=x64',...extra,...packages],{cwd:out,stdio:'inherit',shell:false});
   child.once('error',reject);child.once('exit',code=>code===0?resolve():reject(new Error(`Linux sharp install exited ${code}`)));
 });}
-await install([`sharp@${pkg.dependencies.sharp}`]);
+await install([`sharp@${pkg.dependencies.sharp}`,`@cedar-policy/cedar-wasm@${pkg.dependencies['@cedar-policy/cedar-wasm']}`]);
 // Some Windows npm versions omit foreign optional binaries. Install the exact Linux
 // dependencies explicitly and fail the build unless both files are present.
 const sharpPackage=JSON.parse(await readFile(path.join(out,'node_modules/sharp/package.json'),'utf8'));

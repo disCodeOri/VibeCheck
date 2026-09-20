@@ -10,7 +10,8 @@ import {claimJob, dispatchCloudRequest, failJob, finishJob, hydrateCloudBody, lo
 const region=process.env.AWS_REGION||'us-east-1';
 const ai:AiService=new BedrockService({region,model:process.env.BEDROCK_MODEL||'us.amazon.nova-lite-v1:0',imageModel:process.env.BEDROCK_IMAGE_MODEL||'amazon.nova-canvas-v1:0',useRekognition:true});
 const cloud:CloudDependencies={
-  s3:new S3Client({region}),db:DynamoDBDocumentClient.from(new DynamoDBClient({region})),
+  // Browser supplies the bytes later; do not sign an SDK checksum for an empty body.
+  s3:new S3Client({region,requestChecksumCalculation:'WHEN_REQUIRED'}),db:DynamoDBDocumentClient.from(new DynamoDBClient({region})),
   bucket:process.env.DATA_BUCKET||'',table:process.env.TABLE_NAME||'',
   config:{region,userPoolId:process.env.USER_POOL_ID||'',clientId:process.env.USER_POOL_CLIENT_ID||'',provider:'bedrock',cloudEnabled:true},
 };
@@ -54,5 +55,6 @@ export async function handler(event:APIGatewayProxyEventV2|DynamoDBStreamEvent,c
   if(event.requestContext.http.method==='POST'&&aiPaths.has(event.rawPath)){
     return {statusCode:409,headers:{'content-type':'application/json','cache-control':'no-store'},body:JSON.stringify({error:{code:'USE_JOBS',message:'Cloud AI requests must be submitted through /api/jobs.'}})};
   }
-  return new Promise<APIGatewayProxyStructuredResultV2>((resolve,reject)=>expressHandler(event,context,(error,result)=>error?reject(error):resolve(result as APIGatewayProxyStructuredResultV2)));
+  // v5 returns a Promise; the package's Lambda Handler type still includes a callback.
+  return await expressHandler(event,context,()=>{}) as APIGatewayProxyStructuredResultV2;
 }

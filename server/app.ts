@@ -2,6 +2,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import sharp from 'sharp';
+import {photoPermission} from './privacy.js';
 import { z, ZodError } from 'zod';
 import type { AiRequest, Analysis, AvatarParams, CompareResult } from '../shared/types.js';
 
@@ -20,6 +21,7 @@ export interface AppOptions {
   imageModel?: string;
   rateLimit?: { max: number; windowMs: number };
   maxConcurrent?: number;
+  generationEnabled?: boolean;
 }
 
 const dataUrl = z.string().min(32).startsWith('data:image/');
@@ -61,6 +63,8 @@ export function createApp(ai: AiService, options: AppOptions = {}) {
   const rate = options.rateLimit ?? { max: 20, windowMs: 60_000 };
   const buckets = new Map<string, { count: number; reset: number }>();
   let active = 0;
+  let processingEnabled = true;
+  const generationEnabled = options.generationEnabled ?? true;
   app.disable('x-powered-by');
   app.use(express.json({ limit: '42mb', strict: true }));
   app.use((req, _res, next) => {
@@ -75,6 +79,25 @@ export function createApp(ai: AiService, options: AppOptions = {}) {
   });
   app.get('/api/config', (_req, res) => res.json({cloudEnabled:false,provider:options.provider??'gemini'}));
   app.get('/api/health', (_req, res) => res.json({ configured: options.configured ?? false, model, imageModel,provider:options.provider??'gemini' }));
+  app.get('/api/privacy', (_req,res) => res.json({processingEnabled,generationEnabled,...photoPermission('analyze',processingEnabled,generationEnabled)}));
+  app.post('/api/privacy', (req,res,next) => {
+    const parsed=z.object({processingEnabled:z.boolean()}).strict().safeParse(req.body);
+    if(!parsed.success)return next(new HttpError(400,'INVALID_REQUEST','Choose whether photo processing is enabled.'));
+    processingEnabled=parsed.data.processingEnabled;
+    res.json({processingEnabled,generationEnabled,...photoPermission('analyze',processingEnabled,generationEnabled)});
+  });
+  // A dry run evaluates the same policy as the request boundary, with no image
+  // and no provider call. Used by the demo to prove both allow and deny safely.
+  app.get('/api/privacy/proof', (_req,res) => res.json({
+    enabled:photoPermission('analyze',true,false),
+    paused:photoPermission('analyze',false,false),
+    generation:photoPermission('generate-preview',true,false),
+  }));
+  app.use('/api', (req,_res,next) => {
+    if(req.method==='POST' && ['/analyze','/compare','/avatar','/generate-preview'].includes(req.path) && !photoPermission(req.path.slice(1),processingEnabled,generationEnabled).allowed)
+      return next(new HttpError(403,'PHOTO_PROCESSING_PAUSED',processingEnabled?'Image generation is disabled in this zero-budget local setup.':'Photo processing is paused. Enable it in Your space to request an AI check.'));
+    next();
+  });
   app.use('/api', (req, res, next) => {
     if (req.method === 'GET') return next();
     const key = req.ip ?? 'local';

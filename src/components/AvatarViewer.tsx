@@ -10,6 +10,7 @@ export interface AvatarViewerProps {
   garments: Garment[];
   onCapture?: (capture: () => string) => void;
   modelUrl?: string;
+  autoRotate?: boolean;
 }
 
 type View = 'front' | 'side' | 'back';
@@ -127,12 +128,12 @@ function ParametricAvatar({params, garments}:{params:AvatarParams;garments:Garme
   </group>;
 }
 
-function Scene({params,garments,modelUrl,onCapture,view,onModelError}:{params:AvatarParams;garments:Garment[];modelUrl?:string;onCapture?:AvatarViewerProps['onCapture'];view:View;onModelError:()=>void}) {
+function Scene({params,garments,modelUrl,onCapture,view,onModelError,autoRotate=false}:{params:AvatarParams;garments:Garment[];modelUrl?:string;onCapture?:AvatarViewerProps['onCapture'];view:View;onModelError:()=>void;autoRotate?:boolean}) {
   const controls = useRef<any>(null);
   const {camera} = useThree();
   useEffect(() => {
-    const positions:Record<View,[number,number,number]>={front:[0,.1,6.4],side:[6.4,.1,0],back:[0,.1,-6.4]};
-    camera.position.set(...positions[view]); camera.lookAt(0,-.15,0); controls.current?.target.set(0,-.15,0); controls.current?.update();
+    const positions:Record<View,[number,number,number]>={front:[0,.6,11.6],side:[11.6,.6,0],back:[0,.6,-11.6]};
+    camera.position.set(...positions[view]); camera.lookAt(0,.6,0); controls.current?.target.set(0,.6,0); controls.current?.update();
   },[camera,view]);
   const fallback=<ParametricAvatar params={params} garments={garments}/>;
   return <>
@@ -140,7 +141,7 @@ function Scene({params,garments,modelUrl,onCapture,view,onModelError}:{params:Av
     <group position={[0,.48,0]}>{modelUrl?<ModelBoundary key={modelUrl} fallback={fallback} onError={onModelError}><Suspense fallback={fallback}><LoadedModel url={modelUrl}/></Suspense></ModelBoundary>:fallback}</group>
     <mesh position={[0,-2.36,0]} receiveShadow><cylinderGeometry args={[1.42,1.55,.16,64]}/><meshStandardMaterial color="#e8eff9" roughness={.88}/></mesh>
     <ContactShadows position={[0,-2.27,0]} opacity={.3} scale={5.2} blur={2.8} far={5}/>
-    <OrbitControls ref={controls} makeDefault enablePan={false} minDistance={4.6} maxDistance={8.2} minPolarAngle={Math.PI*.22} maxPolarAngle={Math.PI*.76} target={[0,-.15,0]}/><CaptureBridge onCapture={onCapture}/>
+    <OrbitControls ref={controls} makeDefault autoRotate={autoRotate} autoRotateSpeed={2} enablePan={false} minDistance={6.4} maxDistance={14} minPolarAngle={Math.PI*.22} maxPolarAngle={Math.PI*.76} target={[0,.6,0]}/><CaptureBridge onCapture={onCapture}/>
   </>;
 }
 
@@ -148,7 +149,7 @@ function webglAvailable() {
   try { const c=document.createElement('canvas'); return !!(window.WebGL2RenderingContext&&c.getContext('webgl2')) || !!(window.WebGLRenderingContext&&c.getContext('webgl')); } catch { return false; }
 }
 
-export default function AvatarViewer({params,garments,onCapture,modelUrl}:AvatarViewerProps) {
+export default function AvatarViewer({params,garments,onCapture,modelUrl,autoRotate=false}:AvatarViewerProps) {
   const [view,setView]=useState<View>('front');
   const [reset,setReset]=useState(0);
   const [modelFailed,setModelFailed]=useState(false);
@@ -156,7 +157,7 @@ export default function AvatarViewer({params,garments,onCapture,modelUrl}:Avatar
   useEffect(()=>setModelFailed(false),[modelUrl]);
   if(!supported) return <section className="avatar-viewer avatar-viewer--fallback" aria-label="Avatar preview unavailable"><div className="avatar-fallback-figure"><span/><i/><b/></div><strong>3D preview isn’t available here</strong><p>Your avatar settings and outfit are safe. Open VibeCheck in a browser with WebGL to rotate the full model.</p></section>;
   return <section className="avatar-viewer" aria-label="Interactive 3D avatar preview">
-    <div className="avatar-stage"><Canvas key={reset} shadows dpr={[1,2]} camera={{position:[0,.1,6.4],fov:34,near:.1,far:100}} gl={{antialias:true,alpha:false,preserveDrawingBuffer:true}}><Scene params={params} garments={garments} modelUrl={modelUrl} onCapture={onCapture} view={view} onModelError={()=>setModelFailed(true)}/></Canvas>{modelFailed&&<div className="avatar-model-error" role="status">Model import failed — showing your VibeCheck avatar.</div>}<div className="avatar-drag-cue" aria-hidden="true"><span>↔</span> Drag to rotate</div></div>
+    <div className="avatar-stage"><Canvas key={reset} shadows dpr={[1,2]} camera={{position:[0,.6,11.6],fov:34,near:.1,far:100}} gl={{antialias:true,alpha:false,preserveDrawingBuffer:true}}><Scene autoRotate={autoRotate} params={params} garments={garments} modelUrl={modelUrl} onCapture={onCapture} view={view} onModelError={()=>setModelFailed(true)}/></Canvas>{modelFailed&&<div className="avatar-model-error" role="status">Model import failed — showing your VibeCheck avatar.</div>}<div className="avatar-drag-cue" aria-hidden="true"><span>↔</span> Drag to rotate</div></div>
     <div className="avatar-view-controls" role="group" aria-label="Avatar viewing angle">{(['front','side','back'] as View[]).map(v=><button type="button" key={v} className={view===v?'active':''} aria-pressed={view===v} onClick={()=>setView(v)}>{v[0].toUpperCase()+v.slice(1)}</button>)}<button type="button" onClick={()=>{setView('front');setReset(n=>n+1)}} aria-label="Reset avatar view">Reset</button></div>
   </section>;
 }

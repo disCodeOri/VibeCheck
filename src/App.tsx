@@ -1,6 +1,6 @@
-import {Component,Suspense,lazy,type ReactNode} from 'react';
+import {Component,Suspense,lazy,useEffect,type ReactNode} from 'react';
 import {NavLink,Route,Routes,Link,useLocation} from 'react-router-dom';
-import {House,Bookmark,UserRound,ScanFace,Shirt,ArrowUpRight,MessageCircle,WifiOff} from 'lucide-react';
+import {House,Heart,UserRound,ArrowLeft,WifiOff} from 'lucide-react';
 import {useStore} from './lib/context';
 import Home from './features/Home';
 import Story from './features/Story';
@@ -8,5 +8,33 @@ import Loox from './features/Loox';
 import Saved from './features/Saved';
 import Profile from './features/Profile';
 const ChicFit=lazy(()=>import('./features/ChicFit'));
+const Demo=lazy(()=>import('./demo/Demo'));
 class Boundary extends Component<{children:ReactNode},{error:boolean}>{state={error:false};static getDerivedStateFromError(){return {error:true}}render(){return this.state.error?<div className="empty-state"><h2>Let’s get you back.</h2><p>Something unexpected happened. Your saved looks are still on this device.</p><button className="btn" onClick={()=>location.reload()}>Reload vibecheck</button></div>:this.props.children}}
-export default function App(){const {state,ready}=useStore();const loc=useLocation();const pages=[['/','Home',House],['/story','Story Check',MessageCircle],['/loox','loox',ScanFace],['/chicfit','ChicFit',Shirt],['/saved','Saved looks',Bookmark]] as const;return <div className="app-shell"><aside className="sidebar"><Link className="brand" to="/" aria-label="vibecheck home"><img src="/brand/icon.svg" alt=""/><span><b>vibe</b>check<i>.</i></span></Link><p className="brand-caption">LOOK GOOD. FEEL RIGHT. BE YOU.</p><nav>{pages.map(([url,label,Icon])=><NavLink key={url} to={url} end={url==='/'}><Icon size={20}/><span>{label}</span>{url==='/saved'&&state.saved.length>0&&<small>{state.saved.length}</small>}</NavLink>)}</nav><div className="sidebar-note"><div className="mini-plates"/><strong>Your style.<br/>Your rules.</strong><p>A little perspective.<br/>A lot more you.</p><Link to="/profile">Make it yours <ArrowUpRight size={15}/></Link></div><NavLink to="/profile" className="profile-link"><span className="user-initial">{state.profile.name?.slice(0,1).toUpperCase()||<UserRound size={19}/>}</span><div><strong>{state.profile.name||'Your space'}</strong><small>Profile & preferences</small></div></NavLink></aside><div className="app-main"><header className="topbar"><Link className="brand mobile-brand" to="/"><img src="/brand/icon.svg" alt=""/><span><b>vibe</b>check<i>.</i></span></Link><div className="desktop-topline">A little clarity before you go.</div><div className="topbar-right"><span className="device-label"><span/>YOUR PERSONAL STYLE SPACE</span><Link to="/profile" className="user-initial" aria-label="Profile">{state.profile.name?.slice(0,1).toUpperCase()||<UserRound size={17}/>}</Link></div></header><main id="main-content" key={loc.pathname}>{!ready?<div className="busy">Opening your space…</div>:<Boundary><Suspense fallback={<div className="busy">Opening your wardrobe…</div>}><Routes><Route path="/" element={<Home/>}/><Route path="/story" element={<Story/>}/><Route path="/loox" element={<Loox/>}/><Route path="/chicfit" element={<ChicFit/>}/><Route path="/saved" element={<Saved/>}/><Route path="/profile" element={<Profile/>}/><Route path="*" element={<div className="empty-state"><h1>That page wandered off.</h1><Link className="btn" to="/">Back home</Link></div>}/></Routes></Suspense></Boundary>}</main><footer className="app-footer"><span>vibecheck. — Be your kind of good.</span><span>Made for your everyday.</span></footer></div><nav className="bottom-nav"><NavLink to="/" end><House size={21}/><span>Home</span></NavLink><NavLink to="/saved"><Bookmark size={21}/><span>Saved</span></NavLink><NavLink to="/profile"><UserRound size={21}/><span>Me</span></NavLink></nav>{!navigator.onLine&&<div className="offline"><WifiOff size={16}/>Offline · your saved looks are available</div>}</div>}
+export default function App(){
+  const {state,ready}=useStore();
+  const loc=useLocation();
+  useEffect(()=>{window.scrollTo(0,0)},[loc.pathname]);
+  if(loc.pathname==='/demo')return <Boundary><Suspense fallback={<div className="busy">Opening the walkthrough…</div>}><Demo/></Suspense></Boundary>;
+  const home=loc.pathname==='/';
+  const label=({'/story':'Story Check','/loox':'loox','/chicfit':'ChicFit','/saved':'Saved looks','/profile':'Your space'} as Record<string,string>)[loc.pathname]||'vibecheck';
+  return <div className="app-shell reference-shell">
+    <div className="app-main">
+      <header className="topbar">
+        {home?<Link className="brand" to="/" aria-label="vibecheck home"><img src="/brand/logo.svg" alt="vibecheck."/></Link>:<><Link className="route-back" to="/" aria-label="Back home"><ArrowLeft size={20}/></Link><Link to="/" className="route-brand"><img src="/brand/icon.svg" alt=""/><span>{label}</span></Link></>}
+        <Link to="/profile" className="user-initial" aria-label="Profile">{state.profile.name?.slice(0,1).toUpperCase()||<UserRound size={17}/>}</Link>
+      </header>
+      <main id="main-content" key={loc.pathname} className={`screen-${loc.pathname.split('/')[1]||'home'}`}>
+        {!ready?<div className="busy">Opening your space…</div>:<Boundary><Suspense fallback={<div className="busy">Opening your wardrobe…</div>}><Routes>
+          <Route path="/" element={<Home/>}/><Route path="/story" element={<Story/>}/><Route path="/loox" element={<Loox/>}/><Route path="/chicfit" element={<ChicFit/>}/><Route path="/saved" element={<Saved/>}/><Route path="/profile" element={<Profile/>}/>
+          <Route path="*" element={<div className="empty-state"><h1>That page wandered off.</h1><Link className="btn" to="/">Back home</Link></div>}/>
+        </Routes></Suspense></Boundary>}
+      </main>
+    </div>
+    <nav className="bottom-nav" aria-label="Main navigation">
+      <NavLink to="/" end><House size={20}/><span>Home</span></NavLink>
+      <NavLink to="/saved"><Heart size={20}/><span>Saved{state.saved.length?` · ${state.saved.length}`:''}</span></NavLink>
+      <NavLink to="/profile"><UserRound size={20}/><span>Me</span></NavLink>
+    </nav>
+    {!navigator.onLine&&<div className="offline"><WifiOff size={16}/>Offline · your saved looks are available</div>}
+  </div>;
+}

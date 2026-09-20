@@ -1,11 +1,18 @@
 import {describe,expect,it,vi} from 'vitest';
 import type {APIGatewayProxyEventV2} from 'aws-lambda';
 import {dispatchCloudRequest,ownsKey,trustedSubject,type CloudDependencies} from '../server/cloud';
+import {S3Client,PutObjectCommand} from '@aws-sdk/client-s3';
+import {getSignedUrl} from '@aws-sdk/s3-request-presigner';
 
 function event(path:string,method='GET',body?:unknown,sub?:string):APIGatewayProxyEventV2{return {version:'2.0',routeKey:'',rawPath:path,rawQueryString:'',headers:{authorization:'Bearer ignored'},requestContext:{accountId:'',apiId:'',domainName:'',domainPrefix:'',http:{method,path,protocol:'HTTP/1.1',sourceIp:'127.0.0.1',userAgent:'test'},requestId:'',routeKey:'',stage:'$default',time:'',timeEpoch:0,...(sub?{authorizer:{jwt:{claims:{sub},scopes:[]}}}:{})},isBase64Encoded:false,body:body===undefined?undefined:JSON.stringify(body)};}
 function deps(send=vi.fn()):CloudDependencies{return {s3:{send} as never,db:{send} as never,bucket:'private',table:'state',config:{region:'us-east-1',userPoolId:'pool',clientId:'client',provider:'bedrock',cloudEnabled:true},uuid:()=> '12345678-1234-1234-1234-123456789abc',now:()=>0,sign:vi.fn(async()=> 'https://signed.example/upload')};}
 
 describe('cloud tenancy and upload contracts',()=>{
+  it('signs a browser upload without an incorrect checksum for an empty request body',async()=>{
+    const s3=new S3Client({region:'us-east-1',requestChecksumCalculation:'WHEN_REQUIRED',credentials:{accessKeyId:'TEST',secretAccessKey:'TEST'}});
+    const url=new URL(await getSignedUrl(s3,new PutObjectCommand({Bucket:'private',Key:'users/alice/images/test.jpg',ContentType:'image/jpeg',ContentLength:123}),{expiresIn:300,signableHeaders:new Set(['content-type'])}));
+    expect(url.searchParams.has('x-amz-checksum-crc32')).toBe(false);expect(url.searchParams.get('X-Amz-SignedHeaders')).toContain('content-length');expect(url.searchParams.get('X-Amz-SignedHeaders')).toContain('content-type');
+  });
   it('trusts only API Gateway JWT claims, never an authorization header',()=>{
     expect(trustedSubject(event('/api/cloud/state'))).toBeUndefined();
     expect(trustedSubject(event('/api/cloud/state','GET',undefined,'user-1'))).toBe('user-1');

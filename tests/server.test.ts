@@ -38,6 +38,20 @@ afterEach(async () => {
 });
 
 describe('VibeCheck API', () => {
+  it('enforces the Cedar pause before any provider call, then allows resuming', async()=>{
+    const ai=new FakeAi(),base=await start(ai,{generationEnabled:false});
+    const post=(path:string,body:unknown)=>fetch(base+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+    expect((await post('/api/privacy',{processingEnabled:false})).status).toBe(200);
+    for(const route of ['analyze','compare','avatar','generate-preview'])expect((await post('/api/'+route,{})).status).toBe(403);
+    expect(ai.analyzeCalls).toBe(0);
+    const proof=await (await fetch(base+'/api/privacy/proof')).json();
+    expect(proof.enabled.allowed).toBe(true);expect(proof.paused.allowed).toBe(false);
+    expect((await (await fetch(base+'/api/privacy')).json()).processingEnabled).toBe(false);
+    await post('/api/privacy',{processingEnabled:true});
+    expect((await post('/api/analyze',{kind:'story',image:pixel})).status).toBe(200);
+    expect(ai.analyzeCalls).toBe(1);
+    expect((await post('/api/generate-preview',{image:pixel,kind:'hair',prompt:'Hair'})).status).toBe(403);
+  });
   it('reports provider configuration without exposing credentials', async () => {
     const base = await start(new FakeAi(), { configured: true, model: 'analysis-model', imageModel: 'image-model' });
     const response = await fetch(`${base}/api/health`);

@@ -30,7 +30,7 @@ For sync, upload an `application/json` snapshot, then call `POST /api/cloud/comm
 
 ## Build and deploy later
 
-Run `node scripts/build-lambda.mjs` on a machine with npm network access. It bundles the Node 22 Lambda and installs the Linux x64 `sharp` binary into `build/lambda`; no credentials or secrets are embedded. Then validate and deploy `infra/template.yaml` with AWS SAM. Build the frontend separately and upload `dist/` to the `FrontendBucketName` stack output, followed by a CloudFront invalidation.
+Run `npm run build:lambda` on a machine with npm network access. It bundles the Node 22 Lambda and installs the Linux x64 `sharp` binary into `build/lambda`; no credentials or secrets are embedded. Then validate and deploy `infra/template.yaml` with AWS SAM. Build the frontend separately and upload `dist/` to the `FrontendBucketName` stack output, followed by a CloudFront invalidation.
 
 Before deployment, confirm Bedrock access for the configured Nova models in the target region and review costs, retention, alarms, quotas, and the S3 CORS origin. The template's wildcard CORS values support the first CloudFront deployment before its generated hostname is known; replace them with the emitted distribution origin for production hardening.
 
