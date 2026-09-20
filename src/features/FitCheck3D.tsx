@@ -39,22 +39,30 @@ export default function FitCheck3D() {
     note: 'The deep indigo twill pairs naturally with dark-toned flannel check. Strong visual depth.'
   });
 
-  // Active 3D Model & Face Texture
-  const [selectedModel, setSelectedModel] = useState<string>('/models/humanoid.glb');
+  // The model follows the visual style chosen in Settings; a custom upload
+  // overrides it until cleared.
+  const style = state.profile.style || 'soft';
+  const autoModel = style === 'sharp' ? '/models/male_humanoid.glb' : '/models/humanoid.glb';
+  const [customModel, setCustomModel] = useState<string>('');
+  const selectedModel = customModel || autoModel;
   const [compositedFace, setCompositedFace] = useState<string | null>(null);
   const customModelInputRef = useRef<HTMLInputElement>(null);
+
+  // Release the blob URL when a custom model is replaced or cleared.
+  useEffect(() => () => { if (customModel) URL.revokeObjectURL(customModel); }, [customModel]);
 
   useEffect(() => {
     if (!state.profile.photo) {
       setCompositedFace(null);
       return;
     }
-    const isMale = (selectedModel || '').toLowerCase().includes('male') || (selectedModel || '').toLowerCase().includes('avaturn');
+    // Derived from the chosen style, not the file name: "female" contains
+    // "male", so a name check misreads an uploaded female model.
     createCompositedFaceTexture({
       userImageSrc: state.profile.photo,
-      isMale
+      isMale: style === 'sharp'
     }).then(setCompositedFace).catch(() => {});
-  }, [state.profile.photo, selectedModel]);
+  }, [state.profile.photo, style]);
 
   const captureRef = useRef<(() => string) | null>(null);
   const onCaptureReady = useCallback((fn: () => string) => {
@@ -178,7 +186,7 @@ export default function FitCheck3D() {
               <div className="badge-group">
                 <span className="live-badge">● 3D WebGL Live</span>
                 <span className="model-badge">
-                  {selectedModel === '/models/humanoid.glb' ? 'Ready Player Me Humanoid' : selectedModel === '/models/avaturn.glb' ? 'Avaturn Digital Human' : selectedModel ? 'Custom GLB Model' : 'Parametric Mannequin'}
+                  {customModel ? 'Imported model' : style === 'sharp' ? 'Sharp style model' : 'Soft style model'}
                 </span>
               </div>
               <div className="stage-toggles">
@@ -191,45 +199,54 @@ export default function FitCheck3D() {
               </div>
             </div>
 
-            {/* Model Selector Bar */}
+            {/* The model matches the Soft/Sharp style set in Settings, so there
+                is no gender picker here — only an optional custom upload. */}
             <div className="model-select-bar">
-              <button 
-                type="button"
-                className={`model-pill ${(!selectedModel || selectedModel === '/models/humanoid.glb') ? 'active' : ''}`}
-                onClick={() => setSelectedModel('/models/humanoid.glb')}
-              >
-                👩 Female Model
-              </button>
-              <button 
-                type="button"
-                className={`model-pill ${(selectedModel === '/models/male_humanoid.glb' || selectedModel === '/models/avaturn.glb') ? 'active' : ''}`}
-                onClick={() => setSelectedModel('/models/male_humanoid.glb')}
-              >
-                👨 Male Model
-              </button>
-              <button 
-                type="button"
-                className="model-pill custom"
-                onClick={() => customModelInputRef.current?.click()}
-              >
-                <Upload size={12} /> Custom GLB
-              </button>
-              <input 
+              <p className="model-auto-note">
+                {customModel
+                  ? 'Showing your uploaded model.'
+                  : `Showing the ${style === 'sharp' ? 'Sharp' : 'Soft'} style model. Change it in Settings.`}
+              </p>
+              <div className="model-auto-actions">
+                {customModel && (
+                  <button
+                    type="button"
+                    className="model-pill"
+                    onClick={() => { setCustomModel(''); notify('Back to your style model.'); }}
+                  >
+                    Use style model
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="model-pill custom"
+                  onClick={() => customModelInputRef.current?.click()}
+                >
+                  <Upload size={12} /> Upload GLB
+                </button>
+              </div>
+              <input
                 ref={customModelInputRef}
                 type="file"
                 accept=".glb"
                 hidden
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
+                  e.target.value = '';
                   if (!file) return;
                   if (file.size > 50 * 1024 * 1024) {
                     notify('Choose a GLB under 50 MB.');
                     return;
                   }
-                  const url = URL.createObjectURL(file);
-                  setSelectedModel(url);
-                  notify('Custom 3D model loaded!');
-                  e.target.value = '';
+                  // Check the glTF magic so a mislabelled file fails here
+                  // rather than inside the viewer.
+                  const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+                  if (String.fromCharCode(...head) !== 'glTF') {
+                    notify('That file is not a valid GLB model.');
+                    return;
+                  }
+                  setCustomModel(URL.createObjectURL(file));
+                  notify('Custom 3D model loaded.');
                 }}
               />
             </div>

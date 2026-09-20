@@ -2241,3 +2241,28 @@ img, svg {
   min-height: 460px;
   aspect-ratio: auto;
 }
+
+/* 3D Fit Check model bar: the model follows the Soft/Sharp style, so the bar
+   carries a short explanation and the optional GLB upload, not a picker. */
+.model-select-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.model-auto-note {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6B7C96;
+  margin: 0;
+  min-width: 0;
+}
+
+.model-auto-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
