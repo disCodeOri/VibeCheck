@@ -156,6 +156,19 @@ export default function Home() {
           </div>
         </Link>
       </section>
+
+      {/* 3D Fit Check — added by PR #1 */}
+      <Link to="/fit3d" className="shortcut-card fit3d-card">
+        <div className="shortcut-thumbnail fit3d-thumb" aria-hidden="true" />
+        <div className="shortcut-info">
+          <span className="fit3d-kicker">NEW</span>
+          <h3>3D Fit Check</h3>
+          <p>See a look in 360°.</p>
+        </div>
+        <div className="shortcut-arrow" aria-hidden="true">
+          <ArrowRight size={18} />
+        </div>
+      </Link>
     </div>
   );
 }

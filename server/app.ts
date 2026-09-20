@@ -35,6 +35,7 @@ export const analyzeSchema = z.object({
 }).strict();
 export const compareSchema = z.object({ imageA: dataUrl, imageB: dataUrl, mood: z.string().trim().max(100).optional(), referenceImages: z.array(dataUrl).max(3).optional() }).strict();
 export const avatarSchema = z.object({ image: dataUrl.optional(), bodyImage: dataUrl.optional(), presentation: z.enum(['masculine', 'feminine', 'neutral']), height: z.number().finite().min(145).max(205).optional() }).strict().refine((x) => x.image || x.bodyImage, 'At least one image is required.');
+export const faceAlignSchema = z.object({ image: dataUrl, isMale: z.boolean().optional() }).strict();
 export const previewSchema = z.object({ image: dataUrl, kind: z.enum(['hair', 'outfit']), prompt: shortText, garmentImages: z.array(dataUrl).max(5).optional() }).strict();
 
 class HttpError extends Error { constructor(public status: number, public code: string, message: string, public retryAfter?: number) { super(message); } }
@@ -107,8 +108,19 @@ export function createApp(ai: AiService, options: AppOptions = {}) {
     paused:photoPermission('analyze',false,false),
     generation:photoPermission('generate-preview',true,false),
   }));
+  // Photo-processing gate. /face/align sends a face photo to the AI pipeline
+  // like the others, so it evaluates the same Cedar 'analyze' permission
+  // rather than slipping past a user who paused processing.
+  const GATED: Record<string, string> = {
+    '/analyze': 'analyze',
+    '/compare': 'compare',
+    '/avatar': 'avatar',
+    '/generate-preview': 'generate-preview',
+    '/face/align': 'analyze',
+  };
   app.use('/api', (req,_res,next) => {
-    if(req.method==='POST' && ['/analyze','/compare','/avatar','/generate-preview'].includes(req.path) && !photoPermission(req.path.slice(1),processingEnabled,generationEnabled).allowed)
+    const action = req.method === 'POST' ? GATED[req.path] : undefined;
+    if (action && !photoPermission(action, processingEnabled, generationEnabled).allowed)
       return next(new HttpError(403,'PHOTO_PROCESSING_PAUSED',processingEnabled?'Image generation is disabled in this zero-budget local setup.':'Photo processing is paused. Enable it in Your space to request an AI check.'));
     next();
   });
@@ -153,6 +165,42 @@ export function createApp(ai: AiService, options: AppOptions = {}) {
   app.post('/api/generate-preview', asyncRoute(async (req, res) => {
     const body = previewSchema.parse(req.body);
     res.json(await ai.generatePreview({ ...body, image: await normalizeImage(body.image), garmentImages: await images(body.garmentImages) }));
+  }));
+
+  // OpenCV Face Detection, Alignment, and Seamless Skin Blending
+  // Face alignment runs an out-of-process OpenCV script. The interpreter is
+  // configured, never hardcoded: PYTHON_BIN, else the platform default on PATH.
+  // If it is absent the route reports UNAVAILABLE rather than crashing.
+  app.post('/api/face/align', asyncRoute(async (req, res) => {
+    const body = faceAlignSchema.parse(req.body);
+    const image = await normalizeImage(body.image);
+    const python = process.env.PYTHON_BIN || (process.platform === 'win32' ? 'python' : 'python3');
+    const scriptPath = path.resolve(process.cwd(), 'scripts/align_face.py');
+    if (!existsSync(scriptPath)) throw new HttpError(503, 'FACE_ALIGN_UNAVAILABLE', 'Face alignment is not installed on this server.');
+
+    const { spawn } = await import('node:child_process');
+    const result = await new Promise<string>((resolve, reject) => {
+      const proc = spawn(python, [scriptPath], { windowsHide: true });
+      let stdout = '';
+      let stderr = '';
+      const timer = setTimeout(() => { proc.kill(); reject(new HttpError(504, 'FACE_ALIGN_TIMEOUT', 'Face alignment took too long.')); }, 60_000);
+      proc.stdout.on('data', (d) => { stdout += d.toString(); });
+      proc.stderr.on('data', (d) => { stderr += d.toString(); });
+      // A missing interpreter surfaces here; without this the process would throw.
+      proc.on('error', () => { clearTimeout(timer); reject(new HttpError(503, 'FACE_ALIGN_UNAVAILABLE', 'Face alignment needs Python with OpenCV. Set PYTHON_BIN to the interpreter.')); });
+      proc.on('close', (code) => {
+        clearTimeout(timer);
+        // stderr is logged for the operator, never returned to the browser.
+        if (code !== 0) { console.error('[face/align] exited', code, stderr.slice(0, 2000)); return reject(new HttpError(502, 'FACE_ALIGN_FAILED', 'Face alignment could not complete.')); }
+        resolve(stdout);
+      });
+      proc.stdin.on('error', () => {});
+      proc.stdin.write(JSON.stringify({ image: `data:${image.mimeType};base64,${image.data}`, isMale: body.isMale ?? false }));
+      proc.stdin.end();
+    });
+
+    try { res.json(JSON.parse(result)); }
+    catch { throw new HttpError(502, 'FACE_ALIGN_FAILED', 'Face alignment returned an unreadable result.'); }
   }));
 
   if (process.env.NODE_ENV === 'production') {

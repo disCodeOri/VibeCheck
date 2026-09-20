@@ -1,6 +1,6 @@
 import {Component, Suspense, lazy, useEffect, type ReactNode} from 'react';
 import {NavLink, Route, Routes, Link, useLocation} from 'react-router-dom';
-import {House, Image as ImageIcon, Search, Shirt, Layers, Bookmark, Settings, Bell, ChevronRight, ArrowLeft, WifiOff} from 'lucide-react';
+import {House, Image as ImageIcon, Search, Shirt, Layers, Box, Bookmark, Settings, Bell, ChevronRight, ArrowLeft, WifiOff} from 'lucide-react';
 import {useStore} from './lib/context';
 import Home from './features/Home';
 import Story from './features/Story';
@@ -9,6 +9,7 @@ import Saved from './features/Saved';
 import Profile from './features/Profile';
 
 const ChicFit = lazy(() => import('./features/ChicFit'));
+const FitCheck3D = lazy(() => import('./features/FitCheck3D'));
 const Demo = lazy(() => import('./demo/Demo'));
 
 class Boundary extends Component<{children: ReactNode}, {error: boolean}> {
@@ -45,6 +46,7 @@ export default function App() {
     if (p.startsWith('/story')) return [{label: 'Workspace', path: '/'}, {label: 'Story Check', path: '/story'}, ...(loc.search.includes('compare') ? [{label: 'Compare'}] : [{label: 'Result'}])];
     if (p.startsWith('/loox')) return [{label: 'Workspace', path: '/'}, {label: 'loox', path: '/loox'}, {label: 'Your look'}];
     if (p.startsWith('/chicfit') || p.startsWith('/wardrobe')) return [{label: 'Workspace', path: '/'}, {label: 'ChicFit', path: '/chicfit'}, {label: p.startsWith('/wardrobe') ? 'Wardrobe' : 'Style preview'}];
+    if (p.startsWith('/fit3d')) return [{label: 'Workspace', path: '/'}, {label: '3D Fit Check'}];
     if (p.startsWith('/saved')) return [{label: 'Workspace', path: '/'}, {label: 'Saved'}];
     if (p.startsWith('/profile')) return [{label: 'Workspace', path: '/'}, {label: 'Settings'}];
     return [{label: 'Workspace', path: '/'}, {label: 'Page'}];
@@ -92,6 +94,10 @@ export default function App() {
           <NavLink to="/wardrobe">
             <Layers size={18} />
             <span>Wardrobe</span>
+          </NavLink>
+          <NavLink to="/fit3d">
+            <Box size={18} />
+            <span>3D Fit Check</span>
           </NavLink>
           <NavLink to="/saved">
             <Bookmark size={18} />
@@ -167,6 +173,7 @@ export default function App() {
                       ChicFit is the style preview, Wardrobe is the grid. */}
                   <Route path="/chicfit" element={<ChicFit defaultTab="Outfit" />} />
                   <Route path="/wardrobe" element={<ChicFit defaultTab="Wardrobe" />} />
+                  <Route path="/fit3d" element={<FitCheck3D />} />
                   <Route path="/saved" element={<Saved />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route

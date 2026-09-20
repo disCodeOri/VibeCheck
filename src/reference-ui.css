@@ -1,1 +1,192 @@
-/* Reference UI constraints have been migrated to the responsive design system in src/styles.css */
+/* Final visual calibration against the approved 1536 × 1024 desktop boards.
+   Kept separate from the merged 3D feature stylesheet. */
+.app-shell {
+  --canvas: #f4fbff;
+  --ink: #030c33;
+  --action: #0861ff;
+  --muted: #6270bd;
+  --line: #dceafb;
+  --selected-fill: #e3f0ff;
+  --sidebar-w: 264px;
+  --header-h: 74px;
+  --radius-photo: 16px;
+  --radius-surface: 16px;
+  --shadow-card: none;
+  --fs-page: clamp(38px, 4.5vw, 64px);
+  --fs-page-sub: 28px;
+  --fs-card-title: 38px;
+  --fs-score: 114px;
+  background: radial-gradient(ellipse at 70% 5%, #fff 0, #f4fbff 75%);
+}
+.app-sidebar { background: #f4fbff; padding: 24px 16px 20px; }
+.sidebar-brand { margin-bottom: 30px; padding-left: 14px; }
+.sidebar-brand img { width: 207px; height: 66px; object-fit: contain; }
+.sidebar-section-label { font-size: 13px; font-weight: 500; letter-spacing: .4px; margin: 0 0 10px 12px; }
+.sidebar-nav { gap: 4px; }
+.sidebar-nav a { min-height: 56px; padding: 12px 16px; gap: 24px; font-size: 18px; font-weight: 500; }
+.sidebar-nav a svg { width: 28px; height: 28px; stroke-width: 1.7; }
+.sidebar-nav a.active { font-weight: 800; }
+.sidebar-nav a.active::before { left: -16px; height: 56px; width: 7px; }
+.sidebar-decor { left: -10px; right: 5px; bottom: 112px; height: 405px; background: url('/assets/sidebar-sharp.png') center / 100% 100% no-repeat; }
+.theme-soft .sidebar-decor { left: -33px; right: -2px; height: 465px; bottom: 78px; background-image: url('/assets/sidebar-soft.png'); }
+.app-shell .sidebar-decor::before, .app-shell .sidebar-decor::after { content: none; }
+.sidebar-footer { background: transparent; border: 0; padding-top: 12px; gap: 8px; }
+.profile-pill { padding: 6px 8px; gap: 16px; }
+.profile-avatar { width: 44px; height: 44px; }
+.profile-name { font-size: 17px; font-weight: 500; }
+.profile-sub { display: none; }
+.settings-btn { color: var(--ink); font-size: 17px; font-weight: 500; gap: 24px; padding: 10px 14px; }
+.settings-btn svg { width: 27px; height: 27px; }
+.app-topbar { padding: 0 28px 0 40px; background: rgba(244,251,255,.9); }
+.breadcrumb-trail { font-size: 16px; font-weight: 500; }
+.breadcrumb-current { font-weight: 500; color: var(--muted); }
+.topbar-right { gap: 26px; }
+.topbar-icon-btn { border: 0; background: transparent; }
+.topbar-icon-btn svg { width: 27px; height: 27px; }
+.topbar-user { width: 50px; height: 50px; border: 0; box-shadow: none; }
+.app-content { max-width: 1600px; padding: 22px 24px 40px 20px; }
+.view-header { margin: 0 16px 20px; }
+.view-header h1 { letter-spacing: -.055em; line-height: 1.08; }
+.view-header.with-action h1 { font-size: clamp(32px,3.6vw,56px); }
+.view-header p { line-height: 1.25; letter-spacing: -.04em; }
+.btn { font-size: 16px; min-height: 48px; font-weight: 600; box-shadow: none; }
+.btn:not(.secondary) { background: linear-gradient(115deg,#0861ff,#2274ff); }
+.btn.secondary { color: var(--ink); border-color: #b8cdec; background: rgba(255,255,255,.7); }
+.home-workspace { gap: 12px; }
+.home-workspace > .view-header { margin-bottom: 4px; }
+.home-workspace .view-header h1 { font-size: clamp(42px,5.1vw,78px); font-weight: 800; }
+.home-hero-grid { gap: 12px; grid-template-columns: minmax(0,1.61fr) minmax(0,1fr); }
+.hero-visual-card { aspect-ratio: 750 / 534; }
+.hero-workbench-card { padding: 22px 18px 20px; border: 0; }
+.workbench-head h2 { font-size: clamp(26px,2.7vw,40px); letter-spacing: -.05em; }
+.workbench-head p { font-size: 22px; line-height: 1.25; letter-spacing: -.04em; }
+.mode-segmented { margin: 14px 0 12px; padding: 0; min-height: 44px; border-radius: 18px; }
+.mode-segmented button { font-size: 16px; font-weight: 500; border-radius: 18px; }
+.intake-dropzone { flex: 1; min-height: 225px; padding: 24px 18px 18px; gap: 6px; margin-bottom: 12px; border-width: 1px; border-radius: 12px; background: #fbfdff; }
+.dropzone-icon { width: 66px; height: 66px; border-radius: 24px; margin-bottom: 6px; }
+.dropzone-icon svg { width: 32px; height: 32px; }
+.dropzone-label { font-size: 19px; font-weight: 800; }
+.dropzone-btn { min-width: 218px; margin-top: 8px; padding: 9px 20px; border-radius: 16px; font-size: 16px; font-weight: 500; }
+.workbench-actions { gap: 10px; }
+.workbench-actions .secondary { min-height: 44px; }
+.home-shortcuts-grid { gap: 10px; }
+.shortcut-card { grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); padding: 10px; gap: 20px; min-height: 216px; border: 0; }
+.shortcut-info p { font-size: 19px; }
+.shortcut-arrow { width: 48px; height: 48px; right: 18px; bottom: 18px; }
+.story-workbench { grid-template-columns: minmax(0,1.13fr) minmax(0,1fr); gap: 14px; }
+.story-photo-frame img { aspect-ratio: 646 / 654; }
+.photo-meta-bar { flex-wrap: wrap; gap: 8px; padding: 14px; font-size: 12px; }
+.score-ticket { padding: 24px; border-radius: 12px; }
+.ticket-header { gap: 18px; }
+.ticket-score-plate { padding: 22px 18px 14px; min-width: 204px; background: linear-gradient(135deg,#d5edff,#8fc6ff); box-shadow: 12px 5px 0 #aed7ff90; }
+.theme-sharp .ticket-score-plate { border-radius: 24px 40px 23px 16px; background: url('/assets/score-plate-v2.png') center / 100% 100%; box-shadow: none; }
+.ticket-verdict-area .verdict-title { font-size: 18px; }
+.metric-row { font-size: 17px; grid-template-columns: 100px 1fr 30px; }
+.metric-val { font-size: 17px; }
+.metric-bar-track { height: 12px; border-radius: 20px; }
+.tweak-card { background: #e7f5ef; font-size: 15px; padding: 18px; }
+.ticket-metrics { gap: 17px; }
+.style-match-card { margin-top: 16px; padding: 18px; }
+.style-match-thumbs img { width: 78px; height: 92px; }
+.style-match-score { font-size: 72px; }
+.story-workbench:has(.compare-panes-grid) { grid-template-columns: minmax(0,1.96fr) minmax(0,1fr); }
+.compare-panes-grid { gap: 12px; }
+.pane-badge-top { left: 12px; right: 12px; top: 12px; }
+.pane-label-pill { border-radius: 12px; font-size: 15px; }
+.recommended-pill { font-size: 11px; padding: 7px; }
+.compare-pane-card img { aspect-ratio: 400 / 490; }
+.pane-caption { padding: 8px 14px; }
+.loox-workbench { grid-template-columns: minmax(0,.87fr) minmax(0,1fr); gap: 20px; }
+.loox-photo-container img { aspect-ratio: 550 / 655; }
+.loox-workbench > div:nth-child(2) > div:first-child { padding: 20px !important; border: 0 !important; }
+.hair-options-grid { gap: 14px; }
+.hair-card { padding: 0; border-radius: 14px; }
+.hair-card-img { aspect-ratio: 194 / 210; }
+.style-match-banner { min-height: 122px; margin-top: 28px; }
+.wardrobe-layout { gap: 16px; }
+.wardrobe-toolbar { gap: 10px; margin-bottom: 18px; }
+.category-pills { gap: 5px; }
+.category-pills button { padding: 9px 13px; font-size: 14px; background: #e7f3fc; border: 0; }
+.wardrobe-search { flex-basis: 285px; }
+.garment-card { padding: 10px; border: 0; }
+.garment-card h4 { font-size: 19px; }
+.garments-grid { gap: 14px; }
+.outfit-layout { gap: 12px; }
+.outfit-layout > div:nth-child(2) > div { padding: 24px !important; border: 0 !important; }
+.outfit-layout > div:nth-child(2) h2 { font-size: 38px !important; letter-spacing: -.045em; }
+.outfit-chips-row { gap: 10px; }
+.outfit-chip { width: calc((100% - 40px) / 5); border: 0; padding: 0; background: transparent; }
+.outfit-chip span { font-size: 11px; font-weight: 500; }
+.outfit-chip-img { overflow: hidden; }
+.score-ticket.compact { padding: 16px; }
+.score-ticket.compact .ticket-score-plate { min-width: 154px; padding: 8px; }
+.score-ticket.compact .ticket-header { gap: 18px; margin-bottom: 12px; }
+.score-ticket.compact .ticket-divider { margin: 10px 0; }
+.score-ticket.compact .verdict-title { font-size: 14px; }
+.score-ticket.compact .verdict-desc, .score-ticket.compact .tweak-card { display: none; }
+.score-ticket.compact .metric-row { font-size: 13px; grid-template-columns: 130px 1fr 24px; gap: 8px; }
+.score-ticket.compact .ticket-metrics { gap: 8px; }
+@media (prefers-reduced-motion: no-preference) {
+  .app-content > div { animation: view-enter .35s ease both; }
+  .sidebar-decor { animation: decoration-breathe 9s ease-in-out infinite alternate; transform-origin: left bottom; }
+  @keyframes view-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes decoration-breathe { to { transform: translateY(-6px) rotate(1deg); } }
+}
+@media (max-width: 1199px) and (min-width: 768px) {
+  .app-shell { --sidebar-w: 80px; }
+  .sidebar-decor { display: none; }
+  .sidebar-brand { padding: 0; }
+  .sidebar-brand img { width: 46px; }
+  .sidebar-nav a { padding: 12px 10px; }
+  .app-content { padding: 22px; }
+  .home-hero-grid { grid-template-columns: 1.2fr 1fr; }
+  .workbench-head p { font-size: 17px; }
+  .home-workspace .view-header h1 { font-size: 58px; }
+  .shortcut-card { gap: 12px; min-height: 170px; }
+  .shortcut-info h3 { font-size: 26px; }
+  .shortcut-info p { font-size: 14px; }
+  .story-workbench, .loox-workbench, .wardrobe-layout, .wardrobe-layout.outfit-layout { grid-template-columns: 1fr 1fr; }
+  .ticket-header { flex-wrap: wrap; }
+  .style-match-thumbs img { width: 46px; height: 60px; }
+}
+@media (max-width: 767px) {
+  .app-shell { --fs-page-sub: 18px; --fs-score: 88px; --fs-card-title: 25px; }
+  .app-content { padding: 20px 16px 90px; }
+  .app-topbar { padding: 0 16px; }
+  .breadcrumb-trail { font-size: 12px; }
+  .topbar-right { gap: 10px; }
+  .topbar-user { width: 34px; height: 34px; }
+  .view-header { margin: 0 0 18px; }
+  .view-header h1, .view-header.with-action h1, .home-workspace .view-header h1 { font-size: 36px; }
+  .home-workspace { gap: 14px; }
+  .home-hero-grid, .story-workbench, .story-workbench:has(.compare-panes-grid), .loox-workbench, .wardrobe-layout, .wardrobe-layout.outfit-layout { grid-template-columns: 1fr; }
+  .hero-workbench-card { padding: 18px; }
+  .workbench-head h2 { font-size: 30px; }
+  .workbench-head p { font-size: 18px; }
+  .shortcut-card { min-height: 130px; gap: 14px; }
+  .shortcut-info h3 { font-size: 27px; }
+  .shortcut-info p { font-size: 15px; }
+  .ticket-score-plate { min-width: 150px; padding: 14px 8px; }
+  .score-ticket { padding: 18px; }
+  .ticket-header { gap: 16px; }
+  .ticket-verdict-area h2 { font-size: 42px; }
+  .ticket-verdict-area .verdict-title { font-size: 14px; }
+  .metric-row { font-size: 14px; grid-template-columns: 80px 1fr 24px; }
+  .style-match-card { gap: 10px; padding: 12px; }
+  .style-match-thumbs { gap: 5px; }
+  .style-match-thumbs img { width: 47px; height: 65px; }
+  .style-match-score { font-size: 54px; }
+  .pane-badge-top { flex-wrap: wrap; gap: 4px; }
+  .pane-label-pill { font-size: 11px; padding: 6px; }
+  .recommended-pill { font-size: 9px; }
+  .compare-pane-card img { aspect-ratio: 3 / 4; }
+  .loox-workbench > div:nth-child(2) > div:first-child { padding: 14px !important; }
+  .hair-options-grid { gap: 8px; }
+  .hair-card h4 { font-size: 12px; }
+  .hair-card p { font-size: 11px; }
+  .outfit-layout > div:nth-child(2) > div { padding: 16px !important; }
+  .outfit-layout > div:nth-child(2) h2 { font-size: 32px !important; }
+  .score-ticket.compact .ticket-score-plate { min-width: 124px; }
+  .score-ticket.compact .ticket-header { gap: 12px; }
+  .score-ticket.compact .ticket-verdict-area h2 { font-size: 36px !important; }
+}
